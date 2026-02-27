@@ -1,9 +1,26 @@
 import dgram from 'dgram';
+import os from 'os';
 import { CONFIG } from '../config.js';
 import { buildPacket, parsePacket } from './packet.js';
 import { PeerTable } from './peerTable.js';
 import type { Identity } from '../types/index.js';
 import { PacketType } from '../types/index.js';
+
+function getActiveIpv4Interfaces(): string[] {
+  const nets = os.networkInterfaces();
+  const addresses = new Set<string>();
+
+  for (const list of Object.values(nets)) {
+    if (!list) continue;
+    for (const net of list) {
+      if (net.family === 'IPv4' && !net.internal) {
+        addresses.add(net.address);
+      }
+    }
+  }
+
+  return [...addresses];
+}
 
 export class Discovery {
   private socket!: dgram.Socket;
@@ -48,24 +65,40 @@ export class Discovery {
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.error('[Discovery] Message ignoré:', message);
+        console.error('[Discovery] Message ignore:', message);
       }
     });
 
     this.socket.on('error', (err) => {
-      console.error('[Discovery] Erreur UDP:', err);
+      console.error('[Discovery] UDP error:', err);
     });
 
     await new Promise<void>((resolve, reject) => {
       this.socket.once('error', reject);
       this.socket.bind(CONFIG.MULTICAST_PORT, () => {
         try {
-          this.socket.addMembership(CONFIG.MULTICAST_ADDR);
+          const ifaces = getActiveIpv4Interfaces();
+
+          if (ifaces.length === 0) {
+            this.socket.addMembership(CONFIG.MULTICAST_ADDR);
+          } else {
+            for (const iface of ifaces) {
+              try {
+                this.socket.addMembership(CONFIG.MULTICAST_ADDR, iface);
+                console.log(`[Discovery] Multicast joined on ${iface}`);
+              } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                console.warn(`[Discovery] Join failed on ${iface}: ${message}`);
+              }
+            }
+          }
+
           this.socket.setMulticastLoopback(true);
+          this.socket.setBroadcast(true);
           this.socket.setMulticastTTL(128);
           this.sendHello();
           this.helloInterval = setInterval(() => this.sendHello(), CONFIG.HELLO_INTERVAL);
-          console.log(`[Discovery] Démarré sur ${CONFIG.MULTICAST_ADDR}:${CONFIG.MULTICAST_PORT}`);
+          console.log(`[Discovery] Started on ${CONFIG.MULTICAST_ADDR}:${CONFIG.MULTICAST_PORT}`);
           resolve();
         } catch (error) {
           reject(error);
@@ -90,7 +123,8 @@ export class Discovery {
 
     const pkt = buildPacket(PacketType.HELLO, nodeIdBuffer, payload);
     this.socket.send(pkt, CONFIG.MULTICAST_PORT, CONFIG.MULTICAST_ADDR);
-    console.log('[Discovery] HELLO envoyé');
+    this.socket.send(pkt, CONFIG.MULTICAST_PORT, CONFIG.BROADCAST_ADDR);
+    console.log('[Discovery] HELLO sent (multicast+broadcast)');
   }
 
   stop(): void {
@@ -112,6 +146,6 @@ export class Discovery {
     }
 
     this.socket.close();
-    console.log('[Discovery] Arrêté');
+    console.log('[Discovery] Stopped');
   }
 }
