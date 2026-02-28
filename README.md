@@ -58,6 +58,14 @@ npx.cmd ts-node --esm src/cli/index.ts
 # Ouvre http://localhost:8080
 ```
 
+## Quick Git Workflow
+Pour pousser une mise a jour locale:
+```powershell
+git add .
+git commit -m "docs: update README"
+git push origin main
+```
+
 ## Guide Demo Jury
 1. Lancer le noeud A:
 ```powershell
