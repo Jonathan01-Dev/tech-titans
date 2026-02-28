@@ -3,3 +3,5 @@ node_modules/
 *.key
 .archipel/
 dist/
+demo/*.bin
+demo/downloads/
