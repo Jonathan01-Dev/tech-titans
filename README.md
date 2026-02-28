@@ -1,19 +1,31 @@
 # Archipel
 
-Protocole de communication P2P local, sans serveur central, conçu pour fonctionner hors Internet.
+Archipel est un protocole P2P local sans serveur central.
+Le projet cible une execution hors Internet (LAN/Wi-Fi local).
 
 ## Etat du projet
 
 - Sprint 0: valide
-  - Identite cryptographique (`Ed25519` + `X25519`)
-  - Types et configuration globale
-- Sprint 1: implemente
-  - Format de paquet binaire
-  - Table des pairs avec expiration
+  - Identite cryptographique (Ed25519 + X25519)
+  - Types et configuration protocole
+- Sprint 1: valide
   - Discovery UDP multicast
-  - Serveur TCP
-  - Client TCP
-  - Test reseau de base
+  - Couche TCP client/serveur
+  - Table des pairs
+  - Format de paquet binaire
+- Sprint 2: valide
+  - Chiffrement AES-256-GCM
+  - Derivation HKDF de session key
+  - HMAC-SHA256 des paquets
+  - Handshake AUTH/AUTH_OK
+  - TOFU trust store
+  - Chat E2E
+- Sprint 3: valide
+  - Chunking/reconstruction fichiers
+  - Manifest (serialisation + chiffrement)
+  - Download manager parallele
+  - Serveur TCP etendu (CHUNK_REQ/MANIFEST/CHUNK_DATA)
+  - Tests de transfert avec verification SHA-256
 
 ## Prerequis
 
@@ -28,56 +40,66 @@ cd C:\Users\DELL\Desktop\archipel
 npm.cmd install
 ```
 
-## Scripts utiles
+## Commandes de test
 
-- Test identite:
+- Sprint 0 (identite):
 
 ```powershell
 npx.cmd ts-node --esm tests/test-identity.ts
 ```
 
-- Test reseau Sprint 1:
+- Sprint 1 (reseau):
 
 ```powershell
 npx.cmd ts-node --esm tests/test-network.ts
 ```
 
-## Test discovery sur 2 machines
-
-Conditions:
-- Les 2 machines doivent etre sur le meme LAN/Wi-Fi
-- Le pare-feu Windows doit autoriser `node.exe` sur reseau prive
-- UDP `6000` et ports TCP utilises (ex: `7777`, `7778`) doivent etre autorises
-
-Machine A:
+- Sprint 2 (crypto):
 
 ```powershell
-cd C:\Users\DELL\Desktop\archipel
-$env:TCP_PORT=7777
-npx.cmd ts-node --esm tests/test-network.ts
+npx.cmd ts-node --esm tests/test-crypto.ts
 ```
 
-Machine B:
+- Sprint 2 (handshake reel Alice/Bob):
+
+Bob (server):
+```powershell
+npx.cmd ts-node --esm tests/test-handshake.ts --mode server
+```
+
+Alice (client):
+```powershell
+npx.cmd ts-node --esm tests/test-handshake.ts --mode client --peer 192.168.43.229:7777
+```
+
+- Sprint 3 (transfert simule):
 
 ```powershell
-cd C:\Users\DELL\Desktop\archipel
-$env:TCP_PORT=7778
-npx.cmd ts-node --esm tests/test-network.ts
+npx.cmd ts-node --esm tests/test-transfer.ts
 ```
 
-Resultat attendu:
-- Chaque machine detecte l'autre dans la sortie `Pairs decouverts`.
+- Generation fichier de demo 50 Mo:
 
-## Structure (Sprint 1)
+```powershell
+npx.cmd ts-node --esm demo/generate-test-file.ts
+```
 
-- `src/network/packet.ts`: construction / parsing du paquet Archipel
-- `src/network/peerTable.ts`: gestion des pairs actifs
-- `src/network/discovery.ts`: decouverte multicast UDP
-- `src/network/server.ts`: serveur TCP
-- `src/network/client.ts`: client TCP
-- `tests/test-network.ts`: test integrateur Sprint 1
+## Envoi/reception de fichier reel
 
-## Notes techniques ESM
+Reception (PC2):
 
-Le projet utilise des imports locaux en `.js` avec `ts-node --esm`.  
-Des fichiers shim `.js` exportent les modules `.ts` pour assurer la compatibilite sous Windows.
+```powershell
+npx.cmd ts-node --esm src/cli/index.ts recv --port 7778 --out demo\received
+```
+
+Envoi (PC1):
+
+```powershell
+npx.cmd ts-node --esm src/cli/index.ts send --ip 192.168.43.229 --port 7778 --file "C:\Users\DELL\Downloads\PPTX.pptx"
+```
+
+## Notes techniques
+
+- Imports locaux en `.js` avec `ts-node --esm`.
+- Les shims `.js` doivent rester dans le projet.
+- Les binaires de test (`demo/*.bin`) sont ignores par Git.
