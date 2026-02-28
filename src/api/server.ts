@@ -79,18 +79,24 @@ export async function startWebServer(node: ArpelNode, webPort = 8080): Promise<v
       const uploadedPath = path.isAbsolute(req.file.path)
         ? req.file.path
         : path.join(process.cwd(), req.file.path);
+      const originalName = path.basename(req.file.originalname || req.file.filename || 'received.bin');
       const targetNodeId = typeof req.body.targetNodeId === 'string' ? req.body.targetNodeId : '';
 
-      const manifest = await buildManifest(uploadedPath, node.identity.nodeId, (data) => {
-        return Buffer.from(crypto.createHash('sha256').update(data).digest());
-      });
+      const manifest = await buildManifest(
+        uploadedPath,
+        node.identity.nodeId,
+        (data) => {
+          return Buffer.from(crypto.createHash('sha256').update(data).digest());
+        },
+        originalName
+      );
 
       for await (const chunk of splitFile(uploadedPath)) {
         node.server.storeChunk(manifest.fileId, chunk.index, chunk.data);
       }
 
       if (targetNodeId) {
-        await node.sendFile(targetNodeId, uploadedPath);
+        await node.sendFile(targetNodeId, uploadedPath, originalName);
       }
 
       res.json({

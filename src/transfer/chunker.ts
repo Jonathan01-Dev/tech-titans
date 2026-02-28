@@ -42,7 +42,8 @@ export async function computeFileHash(filepath: string): Promise<string> {
 export async function buildManifest(
   filepath: string,
   senderId: string,
-  sign: (data: Buffer) => Buffer
+  sign: (data: Buffer) => Buffer,
+  filenameOverride?: string
 ): Promise<FileManifest> {
   const stats = await fs.stat(filepath);
   const fileId = await computeFileHash(filepath);
@@ -67,6 +68,7 @@ export async function buildManifest(
 
   const manifest: FileManifest = {
     ...unsignedManifest,
+    filename: filenameOverride ? path.basename(filenameOverride) : unsignedManifest.filename,
     signature
   };
 

@@ -598,10 +598,26 @@
                 <div class="muted">SHA-256: ${escapeHtml(fileId)}</div>
                 <div class="progress"><div style="width:100%"></div></div>
               </div>
+              <button class="btn secondary" onclick="downloadFile('${fileId}')">Telecharger</button>
               <span class="badge ok">Termine</span>
             </div>`
           )
           .join('') || '<div class="muted">Aucun fichier partage</div>';
+      }
+
+      async function downloadFile(fileId) {
+        const status = document.getElementById('shareStatus');
+        status.textContent = `Telechargement en cours: ${fileId.slice(0, 16)}...`;
+        try {
+          const result = await api('/api/files/download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileId })
+          });
+          status.textContent = `Fichier telecharge: ${result.outputPath || 'OK'}`;
+        } catch (error) {
+          status.textContent = `Erreur telechargement: ${error?.message || String(error)}`;
+        }
       }
 
       async function shareFile(file, targetNodeId) {

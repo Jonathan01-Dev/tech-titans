@@ -163,15 +163,20 @@ export class ArpelNode {
     });
   }
 
-  async sendFile(targetNodeId: string, filepath: string): Promise<void> {
+  async sendFile(targetNodeId: string, filepath: string, originalName?: string): Promise<void> {
     const peer = this.peerTable.get(targetNodeId);
     if (!peer) {
       throw new Error(`Peer introuvable: ${targetNodeId}`);
     }
 
-    const manifest = await buildManifest(filepath, this.identity.nodeId, (data) => {
-      return crypto.createHash('sha256').update(data).digest();
-    });
+    const manifest = await buildManifest(
+      filepath,
+      this.identity.nodeId,
+      (data) => {
+        return crypto.createHash('sha256').update(data).digest();
+      },
+      originalName
+    );
 
     const client = new TcpClient();
     const socket = await client.connect(peer);
@@ -207,6 +212,16 @@ export class ArpelNode {
       throw new Error(`Manifest introuvable pour ${fileId}`);
     }
 
+    const outputDir = path.join(process.cwd(), 'downloads');
+    const localChunks = this.server.getStoredChunks(fileId);
+    if (localChunks.size === manifest.nbChunks) {
+      const outputPath = path.join(outputDir, manifest.filename);
+      await reassembleFile(outputPath, manifest, localChunks);
+      const hash = await computeFileHash(outputPath);
+      console.log(`[Node] Fichier reconstruit localement: ${outputPath} (${hash})`);
+      return outputPath;
+    }
+
     const peers = this.getPeers();
     if (peers.length === 0) {
       throw new Error('Aucun pair disponible pour telecharger');
@@ -227,11 +242,9 @@ export class ArpelNode {
       }
     }
 
-    const outputDir = path.join(process.cwd(), 'downloads');
-    const manager = new DownloadManager(manifest, peers, sessionKeys, outputDir, this.identity.nodeId);
+    const manager = new DownloadManager(manifest, peers, sessionKeys, outputDir, this.identity.nodeId, localChunks);
     const outputPath = await manager.download();
     const hash = await computeFileHash(outputPath);
-    void reassembleFile;
     console.log(`[Node] Fichier telecharge: ${outputPath} (${hash})`);
     return outputPath;
   }

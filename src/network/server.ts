@@ -67,11 +67,19 @@ export class TcpServer extends EventEmitter {
   }
 
   listFileIds(): string[] {
-    return Array.from(this.chunkStore.keys());
+    return Array.from(this.manifestStore.keys());
   }
 
   getManifest(fileId: string): FileManifest | undefined {
     return this.manifestStore.get(fileId);
+  }
+
+  getStoredChunks(fileId: string): Map<number, Buffer> {
+    const chunks = this.chunkStore.get(fileId);
+    if (!chunks) {
+      return new Map<number, Buffer>();
+    }
+    return new Map<number, Buffer>(chunks);
   }
 
   private extractPackets(buffer: Buffer): { packets: PacketData[]; remaining: Buffer } {

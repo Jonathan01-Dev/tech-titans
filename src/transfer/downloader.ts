@@ -25,7 +25,8 @@ export class DownloadManager {
     peers: Peer[],
     sessionKeys: Map<string, Buffer>,
     outputDir: string,
-    localNodeId = 'local'
+    localNodeId = 'local',
+    initialChunks?: Map<number, Buffer>
   ) {
     this.manifest = manifest;
     this.peers = peers;
@@ -36,6 +37,14 @@ export class DownloadManager {
     }
     this.inProgress = new Map<number, string>();
     this.completedChunks = new Map<number, Buffer>();
+    if (initialChunks) {
+      for (const [index, data] of initialChunks.entries()) {
+        if (index >= 0 && index < manifest.nbChunks) {
+          this.completedChunks.set(index, data);
+          this.pendingChunks.delete(index);
+        }
+      }
+    }
     this.outputDir = outputDir;
     this.localNodeId = localNodeId;
     this.peerCursor = 0;
@@ -107,7 +116,8 @@ export class DownloadManager {
       } catch {
         this.inProgress.delete(chunkIndex);
         console.log(`[DL] Pair injoignable, chunk ${chunkIndex} remis en file`);
-        break;
+        currentPeer = this.nextPeer();
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
       }
     }
 
