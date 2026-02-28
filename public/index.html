@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Archipels - Interface Noeud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary: #f5a623;
+        --primary-light: #fdf3e0;
+        --sidebar-bg: #ffffff;
+        --bg: #f8f9fa;
+        --text: #1a1a2e;
+        --text-muted: #6b7280;
+        --border: #e5e7eb;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --card-bg: #ffffff;
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+
+      .app {
+        display: flex;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        width: 240px;
+        background: var(--sidebar-bg);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        padding: 18px 14px;
+        gap: 14px;
+      }
+
+      .logo {
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      .logo small {
+        display: block;
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 400;
+      }
+
+      .node-box {
+        background: var(--primary-light);
+        border: 1px solid #f8d79f;
+        border-radius: 12px;
+        padding: 10px;
+      }
+
+      .node-box .label {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .mono {
+        font-family: 'JetBrains Mono', monospace;
+        word-break: break-all;
+      }
+
+      .menu {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .menu button {
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        text-align: left;
+        padding: 10px 12px;
+        cursor: pointer;
+        font-size: 15px;
+        color: var(--text);
+      }
+
+      .menu button.active {
+        background: var(--primary);
+        border-color: #d98a10;
+        font-weight: 700;
+      }
+
+      .network-active {
+        margin-top: auto;
+        color: var(--success);
+        font-weight: 600;
+        animation: pulse 1.6s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 0.7;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.7;
+        }
+      }
+
+      .content {
+        flex: 1;
+        padding: 22px;
+      }
+
+      .header h1 {
+        margin: 0;
+      }
+
+      .header p {
+        margin-top: 6px;
+        color: var(--text-muted);
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .grid.stats {
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 14px;
+        animation: fadein 0.35s ease-out;
+      }
+
+      @keyframes fadein {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .card .title {
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .card .value {
+        margin-top: 6px;
+        font-size: 26px;
+        font-weight: 700;
+      }
+
+      .peer-row,
+      .message-row,
+      .file-row,
+      .trust-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid var(--border);
+        padding: 10px 0;
+      }
+
+      .peer-row:last-child,
+      .message-row:last-child,
+      .file-row:last-child,
+      .trust-row:last-child {
+        border-bottom: none;
+      }
+
+      .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ffd77d, #f5a623);
+        color: #222;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+      }
+
+      .muted {
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .badge {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .badge.ok {
+        background: #e8fbe8;
+        color: #147d37;
+      }
+
+      .badge.warn {
+        background: #fff4de;
+        color: #a86400;
+      }
+
+      .badge.bad {
+        background: #feeaea;
+        color: #9e1f1f;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .chat-layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 14px;
+      }
+
+      .chat-box {
+        height: 420px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .bubble {
+        max-width: 70%;
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 8px;
+        animation: slidein 0.25s ease-out;
+      }
+
+      @keyframes slidein {
+        from {
+          opacity: 0;
+          transform: translateX(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .bubble.sent {
+        margin-left: auto;
+        background: #ffe5b0;
+      }
+
+      .bubble.recv {
+        background: #f1f5f9;
+      }
+
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .row input,
+      .row select,
+      .row textarea {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 9px 10px;
+        font-family: 'DM Sans', sans-serif;
+        width: 100%;
+      }
+
+      .btn {
+        border: none;
+        background: var(--primary);
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .btn.secondary {
+        background: #edf2f7;
+      }
+
+      .btn.success {
+        background: #d7f7dc;
+        color: #0d6a2f;
+      }
+
+      .btn.danger {
+        background: #ffd6d6;
+        color: #9e1f1f;
+      }
+
+      .upload-zone {
+        border: 2px dashed #d7dce3;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+      }
+
+      .progress {
+        height: 8px;
+        border-radius: 8px;
+        background: #edf2f7;
+        overflow: hidden;
+      }
+
+      .progress > div {
+        height: 100%;
+        background: var(--success);
+      }
+
+      @media (max-width: 980px) {
+        .sidebar {
+          width: 100px;
+        }
+
+        .logo small,
+        .node-box,
+        .menu button span {
+          display: none;
+        }
+
+        .chat-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="logo">Archipels <small>Reseau P2P Decentralise</small></div>
+        <div class="node-box">
+          <div class="label">NODE ID</div>
+          <div class="mono" id="nodeIdSidebar">...</div>
+        </div>
+        <div class="menu">
+          <button data-page="dashboard" class="active">🏠 <span>Dashboard</span></button>
+          <button data-page="messages">💬 <span>Messages</span></button>
+          <button data-page="files">📄 <span>Fichiers</span></button>
+          <button data-page="trust">🛡 <span>Web of Trust</span></button>
+        </div>
+        <div class="network-active" id="networkBadge">● Reseau actif</div>
+      </aside>
+
+      <main class="content">
+        <section id="page-dashboard">
+          <div class="header">
+            <h1>Dashboard</h1>
+            <p>Vue d'ensemble</p>
+          </div>
+          <div class="grid stats">
+            <div class="card"><div class="title">Pairs actifs</div><div class="value" id="statPeers">0</div></div>
+            <div class="card"><div class="title">Messages</div><div class="value" id="statMessages">0</div></div>
+            <div class="card"><div class="title">Fichiers</div><div class="value" id="statFiles">0</div></div>
+            <div class="card"><div class="title">Statut</div><div class="value" id="statStatus">Hors ligne</div></div>
+          </div>
+          <div class="card" style="margin-top: 14px">
+            <h3>Pairs connectes</h3>
+            <div id="peerList"></div>
+          </div>
+          <div class="card" style="margin-top: 14px">
+            <h3>Activite recente</h3>
+            <div id="recentActivity"></div>
+          </div>
+        </section>
+
+        <section id="page-messages" class="hidden">
+          <div class="header">
+            <h1>Messages Chiffres</h1>
+            <p>Conversations securisees de noeud a noeud</p>
+          </div>
+          <div class="chat-layout">
+            <div class="card">
+              <div class="row" style="margin-bottom: 10px">
+                <input id="searchNode" placeholder="Rechercher par ID de pair..." />
+              </div>
+              <div id="conversationList"></div>
+            </div>
+            <div class="card">
+              <div id="chatHeader" class="muted">Selectionnez une conversation</div>
+              <div class="chat-box" id="chatMessages"></div>
+              <div class="row" style="margin: 8px 0">
+                <button class="btn secondary" id="btnAskAi">/ask - Utiliser Gemini AI</button>
+                <button class="btn secondary" id="btnMentionAi">@archipel-ai</button>
+              </div>
+              <div class="row">
+                <input id="chatInput" placeholder="Ecrire un message chiffre..." />
+                <button class="btn" id="btnSendMessage">Envoyer ></button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-files" class="hidden">
+          <div class="header">
+            <h1>Transfert de Fichiers</h1>
+            <p>Partage P2P avec verification SHA-256</p>
+          </div>
+          <div class="card">
+            <div class="row" style="justify-content: space-between">
+              <div></div>
+              <button class="btn" id="btnShare">Partager un fichier</button>
+            </div>
+            <div class="upload-zone" id="uploadZone">
+              <div style="font-size: 28px">📤</div>
+              <div>Glissez-deposez un fichier ici</div>
+              <div class="muted">ou cliquez sur le bouton ci-dessus</div>
+            </div>
+            <input type="file" id="fileInput" class="hidden" />
+            <div id="fileList"></div>
+          </div>
+        </section>
+
+        <section id="page-trust" class="hidden">
+          <div class="header">
+            <h1>Web of Trust</h1>
+            <p>Gestion cles publiques et signatures</p>
+          </div>
+          <div class="grid stats" style="grid-template-columns: repeat(3, 1fr)">
+            <div class="card"><div class="title">Verifies</div><div class="value" id="trustVerified">0</div></div>
+            <div class="card"><div class="title">TOFU</div><div class="value" id="trustTofu">0</div></div>
+            <div class="card"><div class="title">Revoques</div><div class="value" id="trustRevoked">0</div></div>
+          </div>
+          <div class="card" style="margin-top: 14px">
+            <div id="trustList"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const state = {
+        currentPage: 'dashboard',
+        currentChatNodeId: null,
+        nodeId: '',
+        peers: [],
+        messages: [],
+        files: [],
+        trustStore: {},
+        refreshInterval: null
+      };
+
+      function shortId(id) {
+        return (id || '').slice(0, 16) + '...';
+      }
+
+      function escapeHtml(text) {
+        return String(text)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;');
+      }
+
+      async function api(path, options = {}) {
+        const res = await fetch(path, options);
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || 'Erreur API');
+        }
+        return res.json();
+      }
+
+      async function loadStatus() {
+        const status = await api('/api/status');
+        state.nodeId = status.nodeId || '';
+        document.getElementById('nodeIdSidebar').textContent = shortId(state.nodeId);
+        document.getElementById('statPeers').textContent = String(status.peers || 0);
+        document.getElementById('statStatus').textContent = status.running ? 'En ligne' : 'Hors ligne';
+        document.getElementById('networkBadge').style.color = status.running ? 'var(--success)' : 'var(--danger)';
+      }
+
+      async function loadPeers() {
+        state.peers = await api('/api/peers');
+        const peerList = document.getElementById('peerList');
+        const convList = document.getElementById('conversationList');
+        peerList.innerHTML = '';
+        convList.innerHTML = '';
+
+        state.peers.forEach((peer) => {
+          const row = document.createElement('div');
+          row.className = 'peer-row';
+          row.innerHTML = `
+            <div class="avatar">${escapeHtml((peer.nodeId || '').slice(0, 4))}</div>
+            <div>
+              <div class="mono">${escapeHtml(peer.nodeId || '')}</div>
+              <div class="muted">${escapeHtml(peer.ip || '')}:${escapeHtml(peer.tcpPort || '')}</div>
+              <span class="badge ok">En ligne</span>
+            </div>
+          `;
+          peerList.appendChild(row);
+
+          const conv = document.createElement('div');
+          conv.className = 'message-row';
+          conv.style.cursor = 'pointer';
+          conv.innerHTML = `
+            <div class="avatar">${escapeHtml((peer.nodeId || '').slice(0, 4))}</div>
+            <div style="flex:1">
+              <div class="mono">${escapeHtml(peer.nodeId || '')}</div>
+              <div class="muted">${escapeHtml(peer.ip || '')}:${escapeHtml(peer.tcpPort || '')}</div>
+            </div>
+            <div>🔒</div>
+          `;
+          conv.onclick = () => openChat(peer.nodeId);
+          convList.appendChild(conv);
+        });
+      }
+
+      async function loadMessages(nodeId) {
+        const query = nodeId ? '?nodeId=' + encodeURIComponent(nodeId) : '';
+        state.messages = await api('/api/messages' + query);
+        document.getElementById('statMessages').textContent = String(state.messages.length);
+        renderRecent();
+        renderChat();
+      }
+
+      function renderRecent() {
+        const container = document.getElementById('recentActivity');
+        const list = [...state.messages].slice(-5).reverse();
+        container.innerHTML = list
+          .map(
+            (m) =>
+              `<div class="message-row"><div>${m.direction === 'sent' ? '➡' : '⬅'} ${escapeHtml(
+                m.content
+              )}</div><div class="muted">${new Date(m.timestamp).toLocaleTimeString()}</div></div>`
+          )
+          .join('') || '<div class="muted">Aucune activite recente</div>';
+      }
+
+      async function sendMessage(targetNodeId, message) {
+        await api('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetNodeId, message, sessionKey: 'demo' })
+        });
+        await loadMessages(targetNodeId);
+      }
+
+      async function loadFiles() {
+        const data = await api('/api/files');
+        state.files = Array.isArray(data.files) ? data.files : [];
+        document.getElementById('statFiles').textContent = String(state.files.length);
+        const list = document.getElementById('fileList');
+        list.innerHTML = state.files
+          .map(
+            (fileId) => `
+            <div class="file-row">
+              <div style="flex:1">
+                <div class="mono">${escapeHtml(fileId)}</div>
+                <div class="muted">SHA-256: ${escapeHtml(fileId)}</div>
+                <div class="progress"><div style="width:100%"></div></div>
+              </div>
+              <span class="badge ok">Termine</span>
+            </div>`
+          )
+          .join('') || '<div class="muted">Aucun fichier partage</div>';
+      }
+
+      async function shareFile(file, targetNodeId) {
+        const fd = new FormData();
+        fd.append('file', file);
+        if (targetNodeId) {
+          fd.append('targetNodeId', targetNodeId);
+        }
+        await fetch('/api/files/share', { method: 'POST', body: fd });
+        await loadFiles();
+      }
+
+      async function loadTrust() {
+        state.trustStore = await api('/api/trust');
+        const entries = Object.entries(state.trustStore || {});
+        const list = document.getElementById('trustList');
+        let verified = 0;
+        let tofu = 0;
+        let revoked = 0;
+
+        list.innerHTML = entries
+          .map(([nodeId, data]) => {
+            const status = data.revoked ? 'revoked' : data.trustedBy === 'self' ? 'verified' : 'tofu';
+            if (status === 'verified') verified++;
+            if (status === 'tofu') tofu++;
+            if (status === 'revoked') revoked++;
+            const badgeClass = status === 'verified' ? 'ok' : status === 'tofu' ? 'warn' : 'bad';
+            const badgeText = status === 'verified' ? 'Verifie' : status === 'tofu' ? 'TOFU' : 'Revoque';
+
+            return `
+              <div class="trust-row">
+                <div class="avatar">${escapeHtml(nodeId.slice(0, 4))}</div>
+                <div style="flex:1">
+                  <div class="mono">${escapeHtml(nodeId)}</div>
+                  <div class="muted">Empreinte: ${escapeHtml(data.fingerprint || '')}</div>
+                  <div class="muted">Cle Ed25519: ${escapeHtml(data.signPublicKey || '')}</div>
+                  <span class="badge ${badgeClass}">${badgeText}</span>
+                </div>
+                ${
+                  status === 'verified'
+                    ? `<button class="btn danger" onclick="revokePeer('${nodeId}')">Revoquer</button>`
+                    : `<button class="btn success" onclick="approvePeer('${nodeId}')">Approuver</button>`
+                }
+              </div>`;
+          })
+          .join('') || '<div class="muted">Aucune entree trust store</div>';
+
+        document.getElementById('trustVerified').textContent = String(verified);
+        document.getElementById('trustTofu').textContent = String(tofu);
+        document.getElementById('trustRevoked').textContent = String(revoked);
+      }
+
+      async function approvePeer(nodeId) {
+        await api('/api/trust/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nodeId })
+        });
+        await loadTrust();
+      }
+
+      async function revokePeer(nodeId) {
+        await api('/api/trust/revoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nodeId })
+        });
+        await loadTrust();
+      }
+
+      function navigate(page) {
+        state.currentPage = page;
+        document.querySelectorAll('.menu button').forEach((b) => b.classList.remove('active'));
+        document.querySelector(`.menu button[data-page="${page}"]`)?.classList.add('active');
+        document.querySelectorAll('main section').forEach((s) => s.classList.add('hidden'));
+        document.getElementById('page-' + page).classList.remove('hidden');
+      }
+
+      function openChat(nodeId) {
+        state.currentChatNodeId = nodeId;
+        state.currentPage = 'messages';
+        navigate('messages');
+        loadMessages(nodeId);
+      }
+
+      function renderChat() {
+        const header = document.getElementById('chatHeader');
+        const box = document.getElementById('chatMessages');
+        if (!state.currentChatNodeId) {
+          header.textContent = 'Selectionnez une conversation';
+          box.innerHTML = '';
+          return;
+        }
+
+        header.innerHTML = `Retour | <span class="mono">${escapeHtml(
+          state.currentChatNodeId
+        )}</span> 🔒 | Empreinte: ${escapeHtml(state.currentChatNodeId.slice(0, 16))}`;
+
+        const msgs = state.messages.filter(
+          (m) => m.fromNodeId === state.currentChatNodeId || m.toNodeId === state.currentChatNodeId
+        );
+        box.innerHTML = msgs
+          .map(
+            (m) => `
+            <div class="bubble ${m.direction === 'sent' ? 'sent' : 'recv'}">
+              <div>${escapeHtml(m.content)}</div>
+              <div class="muted">🔒 nonce: ${escapeHtml(m.nonce || '').slice(0, 8)} ${new Date(
+              m.timestamp
+            ).toLocaleTimeString()}</div>
+            </div>`
+          )
+          .join('');
+        box.scrollTop = box.scrollHeight;
+      }
+
+      document.querySelectorAll('.menu button').forEach((btn) => {
+        btn.onclick = () => navigate(btn.getAttribute('data-page'));
+      });
+
+      document.getElementById('btnSendMessage').onclick = async () => {
+        if (!state.currentChatNodeId) return;
+        const input = document.getElementById('chatInput');
+        const text = input.value.trim();
+        if (!text) return;
+        await sendMessage(state.currentChatNodeId, text);
+        input.value = '';
+      };
+
+      document.getElementById('btnAskAi').onclick = async () => {
+        const input = document.getElementById('chatInput');
+        const q = input.value.trim() || 'Donne un resume rapide du reseau.';
+        const data = await api('/api/gemini', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ context: state.messages.slice(-10).map((m) => m.content), query: q })
+        });
+        input.value = data.response || '';
+      };
+
+      document.getElementById('btnMentionAi').onclick = () => {
+        const input = document.getElementById('chatInput');
+        input.value = '@archipel-ai ' + input.value;
+        input.focus();
+      };
+
+      document.getElementById('btnShare').onclick = () => document.getElementById('fileInput').click();
+
+      document.getElementById('fileInput').onchange = async (evt) => {
+        const f = evt.target.files?.[0];
+        if (!f) return;
+        await shareFile(f, state.currentChatNodeId);
+      };
+
+      async function refreshAll() {
+        await loadStatus();
+        await loadPeers();
+        await loadMessages(state.currentChatNodeId || undefined);
+        await loadFiles();
+        await loadTrust();
+      }
+
+      async function init() {
+        navigate('dashboard');
+        await refreshAll();
+        state.refreshInterval = setInterval(async () => {
+          try {
+            await loadStatus();
+            await loadPeers();
+            await loadMessages(state.currentChatNodeId || undefined);
+          } catch {}
+        }, 5000);
+      }
+
+      init();
+    </script>
+  </body>
+</html>

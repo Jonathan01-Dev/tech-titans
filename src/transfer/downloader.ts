@@ -17,8 +17,15 @@ export class DownloadManager {
   private inProgress: Map<number, string>;
   private completedChunks: Map<number, Buffer>;
   private outputDir: string;
+  private localNodeId: string;
 
-  constructor(manifest: FileManifest, peers: Peer[], sessionKeys: Map<string, Buffer>, outputDir: string) {
+  constructor(
+    manifest: FileManifest,
+    peers: Peer[],
+    sessionKeys: Map<string, Buffer>,
+    outputDir: string,
+    localNodeId = 'local'
+  ) {
     this.manifest = manifest;
     this.peers = peers;
     this.sessionKeys = sessionKeys;
@@ -29,6 +36,7 @@ export class DownloadManager {
     this.inProgress = new Map<number, string>();
     this.completedChunks = new Map<number, Buffer>();
     this.outputDir = outputDir;
+    this.localNodeId = localNodeId;
   }
 
   private takeNextChunk(peerNodeId: string): number | null {
@@ -137,7 +145,7 @@ export class DownloadManager {
         JSON.stringify({
           fileId: this.manifest.fileId,
           chunkIndex,
-          requesterId: 'local'
+          requesterId: this.localNodeId
         }),
         'utf8'
       );

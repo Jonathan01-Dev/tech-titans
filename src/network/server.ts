@@ -66,6 +66,14 @@ export class TcpServer extends EventEmitter {
     return this.chunkStore.has(fileId);
   }
 
+  listFileIds(): string[] {
+    return Array.from(this.chunkStore.keys());
+  }
+
+  getManifest(fileId: string): FileManifest | undefined {
+    return this.manifestStore.get(fileId);
+  }
+
   private extractPackets(buffer: Buffer): { packets: PacketData[]; remaining: Buffer } {
     const packets: PacketData[] = [];
     let offset = 0;
