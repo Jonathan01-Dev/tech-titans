@@ -1,9 +1,12 @@
-export const PacketType = {
+﻿export const PacketType = {
   HELLO: 0x01,
   PEER_LIST: 0x02,
   MSG: 0x03,
   CHUNK_REQ: 0x04,
   CHUNK_DATA: 0x05,
   MANIFEST: 0x06,
-  ACK: 0x07
+  ACK: 0x07,
+  AUTH: 0x08,
+  AUTH_OK: 0x09
 };
+

@@ -1,4 +1,4 @@
-// Identité cryptographique d'un noeud
+ï»¿// IdentitÃ© cryptographique d'un noeud
 export interface KeyPair {
   publicKey: Uint8Array;
   privateKey: Uint8Array;
@@ -19,7 +19,7 @@ export interface PublicIdentity {
   kxPublicKey: string;    // hex
 }
 
-// Pair sur le réseau
+// Pair sur le rÃ©seau
 export interface Peer {
   nodeId: string;
   ip: string;
@@ -47,7 +47,9 @@ export enum PacketType {
   CHUNK_REQ  = 0x04,
   CHUNK_DATA = 0x05,
   MANIFEST   = 0x06,
-  ACK        = 0x07
+  ACK        = 0x07,
+  AUTH       = 0x08,
+  AUTH_OK    = 0x09
 }
 
 // Chunk de fichier
@@ -70,7 +72,7 @@ export interface FileManifest {
   signature: string;
 }
 
-// Résultat chiffrement AES-GCM
+// RÃ©sultat chiffrement AES-GCM
 export interface EncryptedPayload {
   nonce: Buffer;      // 12 bytes
   ciphertext: Buffer;
