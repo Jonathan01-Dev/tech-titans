@@ -6,6 +6,7 @@
     "start": "ts-node --esm src/cli/index.ts",
     "build": "tsc",
     "test": "ts-node --esm tests/test-identity.ts",
+    "test:transfer60": "ts-node --esm tests/test-transfer-60mb.ts",
     "dev": "ts-node --esm src/cli/index.ts"
   },
   "dependencies": {

@@ -128,6 +128,11 @@ export class Discovery {
                 console.warn(`[Discovery] Join failed on ${iface}: ${message}`);
               }
             }
+
+            if (this.joinedIfaces.length === 0) {
+              this.socket.addMembership(CONFIG.MULTICAST_ADDR);
+              console.warn('[Discovery] No interface join succeeded, fallback to default multicast membership');
+            }
           }
 
           this.socket.setMulticastLoopback(true);
@@ -190,11 +195,22 @@ export class Discovery {
     }
 
     try {
-      this.socket.dropMembership(CONFIG.MULTICAST_ADDR);
+      if (this.joinedIfaces.length > 0) {
+        for (const iface of this.joinedIfaces) {
+          try {
+            this.socket.dropMembership(CONFIG.MULTICAST_ADDR, iface);
+          } catch {
+            // ignore per-interface dropMembership errors during shutdown
+          }
+        }
+      } else {
+        this.socket.dropMembership(CONFIG.MULTICAST_ADDR);
+      }
     } catch {
       // ignore dropMembership errors during shutdown
     }
 
+    this.joinedIfaces = [];
     this.socket.close();
     console.log('[Discovery] Stopped');
   }
