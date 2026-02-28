@@ -6,6 +6,7 @@ import { PacketType } from '../types/index.js';
 
 type PacketData = { type: number; nodeId: Buffer; payload: Buffer; signature: Buffer };
 type PacketHandler = (socket: net.Socket, packet: PacketData) => void | Promise<void>;
+type RawConnectionHandler = (socket: net.Socket) => void | Promise<void>;
 
 export class TcpServer {
   private server!: net.Server;
@@ -14,6 +15,7 @@ export class TcpServer {
   private port: number;
   private socketBuffers: Map<net.Socket, Buffer>;
   private packetHandler: PacketHandler | null;
+  private rawConnectionHandler: RawConnectionHandler | null;
 
   constructor(identity: Identity) {
     this.connections = new Set();
@@ -21,10 +23,15 @@ export class TcpServer {
     this.port = 0;
     this.socketBuffers = new Map();
     this.packetHandler = null;
+    this.rawConnectionHandler = null;
   }
 
   setPacketHandler(handler: PacketHandler): void {
     this.packetHandler = handler;
+  }
+
+  setRawConnectionHandler(handler: RawConnectionHandler): void {
+    this.rawConnectionHandler = handler;
   }
 
   private extractPackets(buffer: Buffer): { packets: PacketData[]; remaining: Buffer } {
@@ -56,6 +63,23 @@ export class TcpServer {
       socket.setKeepAlive(true, CONFIG.KEEPALIVE_INTERVAL);
       console.log(`[TCP] Connexion de ${socket.remoteAddress ?? 'unknown'}:${socket.remotePort ?? 0}`);
 
+      socket.on('close', () => {
+        this.connections.delete(socket);
+        this.socketBuffers.delete(socket);
+        console.log('[TCP] Connexion fermee');
+      });
+
+      socket.on('error', (err) => {
+        this.connections.delete(socket);
+        this.socketBuffers.delete(socket);
+        console.error('[TCP] Erreur connexion:', err);
+      });
+
+      if (this.rawConnectionHandler) {
+        void this.rawConnectionHandler(socket);
+        return;
+      }
+
       socket.on('data', (data: Buffer) => {
         try {
           const buffered = Buffer.concat([this.socketBuffers.get(socket) ?? Buffer.alloc(0), data]);
@@ -80,17 +104,6 @@ export class TcpServer {
         }
       });
 
-      socket.on('close', () => {
-        this.connections.delete(socket);
-        this.socketBuffers.delete(socket);
-        console.log('[TCP] Connexion fermee');
-      });
-
-      socket.on('error', (err) => {
-        this.connections.delete(socket);
-        this.socketBuffers.delete(socket);
-        console.error('[TCP] Erreur connexion:', err);
-      });
     });
 
     return new Promise<void>((resolve, reject) => {
