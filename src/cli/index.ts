@@ -1,18 +1,8 @@
 import { ArpelNode } from './node.js';
 import { startWebServer } from '../api/server.js';
 
-function readArgValue(flag: string): string | null {
-  const idx = process.argv.indexOf(flag);
-  if (idx >= 0 && idx + 1 < process.argv.length) {
-    return process.argv[idx + 1];
-  }
-  return null;
-}
-
-const tcpArg = readArgValue('--port');
-const webArg = readArgValue('--web-port');
-const TCP_PORT = parseInt(tcpArg || process.env.TCP_PORT || '7777', 10);
-const WEB_PORT = parseInt(webArg || process.env.WEB_PORT || '8080', 10);
+const TCP_PORT = parseInt(process.env.TCP_PORT || '7777', 10);
+const WEB_PORT = parseInt(process.env.WEB_PORT || '8080', 10);
 
 async function main(): Promise<void> {
   console.log('ARCHIPEL - Demarrage...');
