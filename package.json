@@ -7,7 +7,8 @@
     "build": "tsc",
     "test": "ts-node --esm tests/test-identity.ts",
     "test:transfer60": "ts-node --esm tests/test-transfer-60mb.ts",
-    "dev": "ts-node --esm src/cli/index.ts"
+    "dev": "ts-node --esm src/cli/index.ts",
+    "postinstall": "node ./tools/postinstall-desktop-shortcut.mjs"
   },
   "dependencies": {
     "@abandonware/bleno": "^0.6.2-8",
