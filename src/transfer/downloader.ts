@@ -4,10 +4,11 @@ import crypto from 'crypto';
 import type { FileManifest, Peer } from '../types/index.js';
 import { TcpClient } from '../network/client.js';
 import { buildPacket, parsePacket } from '../network/packet.js';
-import { encrypt, decrypt } from '../crypto/cipher.js';
+import { decrypt } from '../crypto/cipher.js';
 import { PacketType } from '../types/index.js';
 import { CONFIG } from '../config.js';
 import { reassembleFile } from './chunker.js';
+import type { Socket } from 'net';
 
 export class DownloadManager {
   private manifest: FileManifest;
@@ -19,6 +20,7 @@ export class DownloadManager {
   private outputDir: string;
   private localNodeId: string;
   private peerCursor: number;
+  private chunkFailures: Map<number, number>;
 
   constructor(
     manifest: FileManifest,
@@ -48,6 +50,7 @@ export class DownloadManager {
     this.outputDir = outputDir;
     this.localNodeId = localNodeId;
     this.peerCursor = 0;
+    this.chunkFailures = new Map();
   }
 
   private nodeIdToBuffer(nodeId: string): Buffer {
@@ -90,6 +93,18 @@ export class DownloadManager {
 
   private async worker(peer: Peer): Promise<void> {
     let currentPeer = peer;
+    let socket: Socket | null = null;
+    const client = new TcpClient();
+    const MAX_CHUNK_RETRIES = 8;
+
+    const closeSocket = async (): Promise<void> => {
+      if (!socket) {
+        return;
+      }
+      await client.disconnectGraceful(socket).catch(() => undefined);
+      socket = null;
+    };
+
     while (this.pendingChunks.size > 0) {
       const chunkIndex = this.takeNextChunk(currentPeer.nodeId);
       if (chunkIndex === null) {
@@ -98,29 +113,46 @@ export class DownloadManager {
       }
 
       try {
-        const data = await this.requestChunk(currentPeer, chunkIndex);
+        if (!socket || socket.destroyed) {
+          socket = await client.connect(currentPeer);
+        }
+
+        const data = await this.requestChunk(socket, currentPeer, chunkIndex);
         const expected = this.manifest.chunks[chunkIndex];
         const actualHash = crypto.createHash('sha256').update(data).digest('hex');
 
         if (actualHash !== expected.hash) {
+          const attempts = (this.chunkFailures.get(chunkIndex) ?? 0) + 1;
+          this.chunkFailures.set(chunkIndex, attempts);
           this.inProgress.delete(chunkIndex);
-          console.log(`[DL] Hash invalide chunk ${chunkIndex}, retry`);
+          if (attempts >= MAX_CHUNK_RETRIES) {
+            throw new Error(`[DL] Chunk ${chunkIndex} echec hash apres ${attempts} essais`);
+          }
+          console.log(`[DL] Hash invalide chunk ${chunkIndex}, retry ${attempts}/${MAX_CHUNK_RETRIES}`);
           continue;
         }
 
         this.completedChunks.set(chunkIndex, data);
         this.pendingChunks.delete(chunkIndex);
         this.inProgress.delete(chunkIndex);
+        this.chunkFailures.delete(chunkIndex);
         console.log(`[DL] Chunk ${chunkIndex + 1}/${this.manifest.nbChunks} OK`);
         currentPeer = this.nextPeer();
       } catch {
+        await closeSocket();
         this.inProgress.delete(chunkIndex);
-        console.log(`[DL] Pair injoignable, chunk ${chunkIndex} remis en file`);
+        const attempts = (this.chunkFailures.get(chunkIndex) ?? 0) + 1;
+        this.chunkFailures.set(chunkIndex, attempts);
+        if (attempts >= MAX_CHUNK_RETRIES) {
+          throw new Error(`[DL] Chunk ${chunkIndex} impossible apres ${attempts} essais`);
+        }
+        console.log(`[DL] Pair injoignable, chunk ${chunkIndex} remis en file (${attempts}/${MAX_CHUNK_RETRIES})`);
         currentPeer = this.nextPeer();
         await new Promise<void>((resolve) => setTimeout(resolve, 100));
       }
     }
 
+    await closeSocket();
     console.log('[DL] Worker termine');
   }
 
@@ -164,50 +196,54 @@ export class DownloadManager {
     });
   }
 
-  private async requestChunk(peer: Peer, chunkIndex: number): Promise<Buffer> {
-    const client = new TcpClient();
-    const socket = await client.connect(peer);
+  private async requestChunk(socket: Socket, peer: Peer, chunkIndex: number): Promise<Buffer> {
+    const payload = Buffer.from(
+      JSON.stringify({
+        fileId: this.manifest.fileId,
+        chunkIndex,
+        requesterId: this.localNodeId
+      }),
+      'utf8'
+    );
 
-    try {
-      const payload = Buffer.from(
-        JSON.stringify({
-          fileId: this.manifest.fileId,
-          chunkIndex,
-          requesterId: this.localNodeId
-        }),
-        'utf8'
-      );
-
-      const req = buildPacket(PacketType.CHUNK_REQ, this.nodeIdToBuffer(this.localNodeId), payload);
-      await client.sendPacket(socket, req);
-
-      const responseRaw = await this.readPacket(socket);
-      const response = parsePacket(responseRaw);
-      if (response.type !== PacketType.CHUNK_DATA) {
-        throw new Error(`Unexpected packet type ${response.type}`);
-      }
-
-      const body = JSON.parse(response.payload.toString('utf8')) as {
-        fileId: string;
-        chunkIndex: number;
-        nonce: string;
-        ciphertext: string;
-        tag: string;
-      };
-
-      const sessionKey = this.sessionKeys.get(peer.nodeId);
-      if (!sessionKey) {
-        throw new Error(`Missing session key for peer ${peer.nodeId}`);
-      }
-
-      return decrypt(sessionKey, {
-        nonce: Buffer.from(body.nonce, 'hex'),
-        ciphertext: Buffer.from(body.ciphertext, 'hex'),
-        tag: Buffer.from(body.tag, 'hex')
+    const req = buildPacket(PacketType.CHUNK_REQ, this.nodeIdToBuffer(this.localNodeId), payload);
+    await new Promise<void>((resolve, reject) => {
+      socket.write(req, (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
       });
-    } finally {
-      await client.disconnectGraceful(socket).catch(() => undefined);
+    });
+
+    const responseRaw = await this.readPacket(socket);
+    const response = parsePacket(responseRaw);
+    if (response.type === PacketType.ACK) {
+      const ackBody = JSON.parse(response.payload.toString('utf8')) as { status?: number };
+      throw new Error(`Peer ACK status ${ackBody.status ?? -1} for chunk ${chunkIndex}`);
     }
+    if (response.type !== PacketType.CHUNK_DATA) {
+      throw new Error(`Unexpected packet type ${response.type}`);
+    }
+
+    const body = JSON.parse(response.payload.toString('utf8')) as {
+      fileId: string;
+      chunkIndex: number;
+      nonce: string;
+      ciphertext: string;
+      tag: string;
+    };
+
+    const sessionKey =
+      this.sessionKeys.get(peer.nodeId) ??
+      crypto.createHash('sha256').update(CONFIG.DEFAULT_SESSION_SEED).digest().subarray(0, 32);
+
+    return decrypt(sessionKey, {
+      nonce: Buffer.from(body.nonce, 'hex'),
+      ciphertext: Buffer.from(body.ciphertext, 'hex'),
+      tag: Buffer.from(body.tag, 'hex')
+    });
   }
 
   getProgress(): { downloaded: number; total: number } {

@@ -47,7 +47,7 @@ export class ArpelNode {
     this.sessionKeys = new Map();
     this.webPort = 8080;
     this.startedAt = 0;
-    this.defaultSessionKey = crypto.createHash('sha256').update('demo').digest().subarray(0, 32);
+    this.defaultSessionKey = crypto.createHash('sha256').update(CONFIG.DEFAULT_SESSION_SEED).digest().subarray(0, 32);
   }
 
   async start(port: number): Promise<void> {
@@ -118,7 +118,7 @@ export class ArpelNode {
     }
 
     this.sessionKeys.set(targetNodeId, sessionKey);
-    this.server.setSessionKey(this.identity.nodeId, sessionKey);
+    this.server.setSessionKey(targetNodeId, sessionKey);
 
     const encrypted = encrypt(sessionKey, Buffer.from(message, 'utf8'));
     const payload = Buffer.from(
@@ -236,7 +236,7 @@ export class ArpelNode {
     }
 
     if (sessionKeys.size === 0) {
-      const fallback = crypto.createHash('sha256').update('archipel-demo-session').digest().subarray(0, 32);
+      const fallback = crypto.createHash('sha256').update(CONFIG.DEFAULT_SESSION_SEED).digest().subarray(0, 32);
       for (const peer of peers) {
         sessionKeys.set(peer.nodeId, fallback);
       }
@@ -287,7 +287,7 @@ export class ArpelNode {
     try {
       const key = await performHandshake(socket, this.identity, true);
       this.sessionKeys.set(peer.nodeId, key);
-      this.server.setSessionKey(this.identity.nodeId, key);
+      this.server.setSessionKey(peer.nodeId, key);
       return key;
     } finally {
       await client.disconnectGraceful(socket).catch(() => undefined);

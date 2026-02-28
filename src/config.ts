@@ -14,6 +14,7 @@ export const CONFIG = {
   PEER_TIMEOUT: 90000,
   KEEPALIVE_INTERVAL: 15000,
   CHUNK_SIZE: 524288,
+  DEFAULT_SESSION_SEED: 'archipel-demo-session',
   TYPES: PacketType,
   MAGIC: Buffer.from('ARCH'),
   PROTOCOL_VERSION: 'archipel-v1'

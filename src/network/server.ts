@@ -1,5 +1,6 @@
 import net from 'net';
 import { EventEmitter } from 'events';
+import crypto from 'crypto';
 import { CONFIG } from '../config.js';
 import { parsePacket, buildPacket } from './packet.js';
 import type { FileManifest, Identity } from '../types/index.js';
@@ -21,6 +22,7 @@ export class TcpServer extends EventEmitter {
   private chunkStore: Map<string, Map<number, Buffer>>;
   private manifestStore: Map<string, FileManifest>;
   private sessionKeys: Map<string, Buffer>;
+  private defaultSessionKey: Buffer;
 
   constructor(identity: Identity) {
     super();
@@ -33,6 +35,7 @@ export class TcpServer extends EventEmitter {
     this.chunkStore = new Map();
     this.manifestStore = new Map();
     this.sessionKeys = new Map();
+    this.defaultSessionKey = crypto.createHash('sha256').update(CONFIG.DEFAULT_SESSION_SEED).digest().subarray(0, 32);
   }
 
   setPacketHandler(handler: PacketHandler): void {
@@ -121,16 +124,11 @@ export class TcpServer extends EventEmitter {
         return true;
       }
 
-      const sessionKey = this.sessionKeys.get(body.requesterId);
-      if (!sessionKey) {
-        const noKey = buildPacket(
-          PacketType.ACK,
-          Buffer.from(this.identity.sign.publicKey),
-          Buffer.from(JSON.stringify({ status: 0x03 }), 'utf8')
-        );
-        socket.write(noKey);
-        return true;
-      }
+      const requesterIdFromPacket = pkt.nodeId.toString('hex');
+      const sessionKey =
+        this.sessionKeys.get(body.requesterId) ??
+        this.sessionKeys.get(requesterIdFromPacket) ??
+        this.defaultSessionKey;
 
       const enc = encrypt(sessionKey, chunk);
       const payload = Buffer.from(
