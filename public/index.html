@@ -1108,6 +1108,7 @@
     <!-- Injected dynamically -->
   </div>
 </div>
+<audio id="remoteAudio" autoplay playsinline style="display:none;"></audio>
 
 <div class="app">
 
@@ -1453,8 +1454,17 @@
     callTimer: null,
     callSeconds: 0,
     callMuted: false,
+    callPc: null,
+    callLocalStream: null,
+    callRemoteStream: null,
+    callPendingOffer: null,
+    callTimerStarted: false,
+    processedCallSignalIds: new Set(),
     refreshInterval: null
   };
+
+  const CALL_SIGNAL_PREFIX = '__archipel_call__:';
+  const CALL_SESSION_KEY = 'demo';
 
   // ═══════════════════════════════════════════
   // UTILS
@@ -1481,6 +1491,32 @@
 
   function genNonce() {
     return Math.random().toString(16).slice(2,10);
+  }
+
+  function isCallSignalMessage(message) {
+    return typeof message?.content === 'string' && message.content.startsWith(CALL_SIGNAL_PREFIX);
+  }
+
+  function parseCallSignalMessage(message) {
+    if (!isCallSignalMessage(message)) return null;
+    try {
+      return JSON.parse(message.content.slice(CALL_SIGNAL_PREFIX.length));
+    } catch {
+      return null;
+    }
+  }
+
+  async function postRawMessage(targetNodeId, message) {
+    return api('/api/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ targetNodeId, message, sessionKey: CALL_SESSION_KEY })
+    });
+  }
+
+  async function sendCallSignal(targetNodeId, type, data = {}) {
+    const payload = CALL_SIGNAL_PREFIX + JSON.stringify({ type, ...data });
+    await postRawMessage(targetNodeId, payload);
   }
 
   // ═══════════════════════════════════════════
@@ -1592,6 +1628,7 @@
       const q = nodeId ? '?nodeId=' + encodeURIComponent(nodeId) : '';
       state.messages = await api('/api/messages' + q);
     } catch(e) { state.messages = []; }
+    await processCallSignals();
     document.getElementById('statMessages').textContent = state.messages.length;
     renderRecent();
     renderChat();
@@ -1599,7 +1636,7 @@
 
   function renderRecent() {
     const c = document.getElementById('recentActivity');
-    const list = [...state.messages].reverse().slice(0,5);
+    const list = [...state.messages].filter(m => !isCallSignalMessage(m)).reverse().slice(0,5);
     if (!list.length) {
       c.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Aucune activité</div></div>`;
       return;
@@ -1634,13 +1671,14 @@
       m.fromNodeId === state.currentChatNodeId ||
       m.toNodeId === state.currentChatNodeId
     );
+    const visibleMsgs = msgs.filter(m => !isCallSignalMessage(m));
 
-    if (!msgs.length) {
+    if (!visibleMsgs.length) {
       box.innerHTML = `<div class="empty" style="margin:auto;"><div class="empty-icon">💬</div><div class="empty-title">Aucun message</div><div class="empty-sub">Envoyez le premier message chiffré</div></div>`;
       return;
     }
 
-    box.innerHTML = msgs.map(m => {
+    box.innerHTML = visibleMsgs.map(m => {
       if (m.type === 'gemini') {
         return `<div class="bubble-gemini">
           <div class="gemini-badge">✨ Gemini AI</div>
@@ -1830,7 +1868,6 @@
           <button class="call-btn mute" id="callMuteBtn" onclick="toggleMute()" title="Muet">🎤</button>
           <button class="call-btn hangup" onclick="endCall()" title="Raccrocher">📵</button>
         </div>`;
-      startCallTimer();
     } else if (mode === 'incoming') {
       card.innerHTML = `
         <div class="call-avatar" style="animation:callpulse 1s infinite;">${avatarText}</div>
@@ -1854,8 +1891,16 @@
     }
   }
 
+  function stopCallTimer() {
+    if (state.callTimer) clearInterval(state.callTimer);
+    state.callTimer = null;
+    state.callTimerStarted = false;
+  }
+
   function startCallTimer() {
+    stopCallTimer();
     state.callSeconds = 0;
+    state.callTimerStarted = true;
     state.callTimer = setInterval(() => {
       state.callSeconds++;
       const m = String(Math.floor(state.callSeconds/60)).padStart(2,'0');
@@ -1865,21 +1910,198 @@
     }, 1000);
   }
 
-  function acceptCall() {
-    state.callState = 'active';
-    showCallOverlay('active', state.callPeer);
-    startCallTimer();
-    showToast('Appel accepté — Connexion E2E établie ✓');
-    // TODO: Démarrer capture audio + streaming TCP
+  function registerCallConnected() {
+    if (state.callState !== 'active') {
+      showCallOverlay('active', state.callPeer);
+    }
+    if (!state.callTimerStarted) {
+      startCallTimer();
+    }
+    showToast('Appel connecté ✓');
   }
 
-  function endCall() {
-    if (state.callTimer) clearInterval(state.callTimer);
+  async function createCallPeerConnection() {
+    if (!window.RTCPeerConnection) {
+      throw new Error('WebRTC non supporté sur ce navigateur');
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Microphone indisponible sur ce navigateur');
+    }
+
+    if (!state.callLocalStream) {
+      state.callLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      state.callMuted = false;
+    }
+
+    if (state.callPc) {
+      try { state.callPc.close(); } catch {}
+    }
+
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    state.callPc = pc;
+    state.callRemoteStream = new MediaStream();
+    const remoteAudio = document.getElementById('remoteAudio');
+    remoteAudio.srcObject = state.callRemoteStream;
+    remoteAudio.play().catch(() => undefined);
+
+    state.callLocalStream.getTracks().forEach(track => pc.addTrack(track, state.callLocalStream));
+
+    pc.ontrack = (event) => {
+      for (const track of event.streams[0].getTracks()) {
+        state.callRemoteStream.addTrack(track);
+      }
+      remoteAudio.play().catch(() => undefined);
+    };
+
+    pc.onicecandidate = (event) => {
+      if (!event.candidate || !state.callPeer) return;
+      sendCallSignal(state.callPeer, 'ice', { candidate: event.candidate }).catch(() => undefined);
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'connected') {
+        registerCallConnected();
+      } else if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+        endCall(false);
+      }
+    };
+
+    return pc;
+  }
+
+  function cleanupCallMedia() {
+    if (state.callPc) {
+      try { state.callPc.close(); } catch {}
+    }
+    state.callPc = null;
+
+    if (state.callLocalStream) {
+      state.callLocalStream.getTracks().forEach(track => track.stop());
+    }
+    state.callLocalStream = null;
+    state.callRemoteStream = null;
+    state.callPendingOffer = null;
+    state.callMuted = false;
+
+    const remoteAudio = document.getElementById('remoteAudio');
+    remoteAudio.srcObject = null;
+  }
+
+  async function processCallSignalMessage(message) {
+    if (!message?.id || state.processedCallSignalIds.has(message.id)) return;
+    if (message.direction !== 'received') return;
+
+    const signal = parseCallSignalMessage(message);
+    if (!signal) return;
+
+    state.processedCallSignalIds.add(message.id);
+    const fromNodeId = message.fromNodeId;
+
+    if (signal.type === 'offer') {
+      if (state.callState && state.callState !== 'incoming') {
+        await sendCallSignal(fromNodeId, 'reject', { reason: 'busy' }).catch(() => undefined);
+        return;
+      }
+      state.callPeer = fromNodeId;
+      state.callPendingOffer = signal.sdp;
+      showCallOverlay('incoming', fromNodeId);
+      showToast('Appel entrant de ' + shortId(fromNodeId), 'info');
+      return;
+    }
+
+    if (!state.callPeer || fromNodeId !== state.callPeer) return;
+
+    if (signal.type === 'answer' && state.callPc) {
+      await state.callPc.setRemoteDescription(signal.sdp);
+      registerCallConnected();
+      return;
+    }
+
+    if (signal.type === 'ice' && state.callPc && signal.candidate) {
+      await state.callPc.addIceCandidate(signal.candidate).catch(() => undefined);
+      return;
+    }
+
+    if (signal.type === 'hangup') {
+      showToast('Votre correspondant a raccroché', 'info');
+      endCall(false);
+      return;
+    }
+
+    if (signal.type === 'reject') {
+      showToast('Appel refusé', 'info');
+      endCall(false);
+    }
+  }
+
+  async function processCallSignals() {
+    const callSignals = state.messages.filter(isCallSignalMessage);
+    for (const message of callSignals) {
+      await processCallSignalMessage(message);
+    }
+  }
+
+  async function startOutgoingCall(targetNodeId) {
+    if (!targetNodeId) {
+      showToast('Sélectionnez un pair', 'error');
+      return;
+    }
+    if (state.callState) {
+      showToast('Un appel est déjà en cours', 'error');
+      return;
+    }
+
+    try {
+      showCallOverlay('outgoing', targetNodeId);
+      const pc = await createCallPeerConnection();
+      const offer = await pc.createOffer({ offerToReceiveAudio: true });
+      await pc.setLocalDescription(offer);
+      await sendCallSignal(targetNodeId, 'offer', { sdp: pc.localDescription });
+      showToast('Appel en cours vers ' + shortId(targetNodeId), 'info');
+    } catch (e) {
+      const msg = e?.message || String(e);
+      showToast('Erreur appel: ' + msg, 'error');
+      endCall(false);
+    }
+  }
+
+  async function acceptCall() {
+    if (!state.callPeer || !state.callPendingOffer) {
+      showToast('Aucun appel entrant à accepter', 'error');
+      return;
+    }
+
+    try {
+      const pc = await createCallPeerConnection();
+      await pc.setRemoteDescription(state.callPendingOffer);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await sendCallSignal(state.callPeer, 'answer', { sdp: pc.localDescription });
+      showCallOverlay('active', state.callPeer);
+      registerCallConnected();
+    } catch (e) {
+      const msg = e?.message || String(e);
+      showToast('Erreur acceptation: ' + msg, 'error');
+      endCall(false);
+    }
+  }
+
+  function endCall(notifyRemote = true) {
+    stopCallTimer();
     const dur = state.callSeconds;
+    const wasIncoming = state.callState === 'incoming';
+    const peer = state.callPeer;
     state.callState = null;
     state.callPeer = null;
     state.callSeconds = 0;
     document.getElementById('callOverlay').classList.add('hidden');
+    cleanupCallMedia();
+
+    if (notifyRemote && peer) {
+      const type = wasIncoming ? 'reject' : 'hangup';
+      sendCallSignal(peer, type).catch(() => undefined);
+    }
+
     if (dur > 0) {
       const m = String(Math.floor(dur/60)).padStart(2,'0');
       const s = String(dur%60).padStart(2,'0');
@@ -1896,6 +2118,11 @@
 
   function toggleMute() {
     state.callMuted = !state.callMuted;
+    if (state.callLocalStream) {
+      state.callLocalStream.getAudioTracks().forEach(track => {
+        track.enabled = !state.callMuted;
+      });
+    }
     const btn = document.getElementById('callMuteBtn');
     if (btn) btn.textContent = state.callMuted ? '🔇' : '🎤';
     showToast(state.callMuted ? 'Micro coupé' : 'Micro activé', 'info');
@@ -1981,32 +2208,13 @@
     input.focus();
   };
 
-  document.getElementById('btnCall').onclick = () => {
-    if (!state.currentChatNodeId) { showToast('Sélectionnez un pair', 'error'); return; }
-    showCallOverlay('outgoing', state.currentChatNodeId);
-    showToast('Appel en cours vers ' + shortId(state.currentChatNodeId), 'info');
-    // Simulate connection after 2s (replace with real signaling)
-    setTimeout(() => {
-      if (state.callState === 'outgoing') {
-        state.callState = 'active';
-        showCallOverlay('active', state.currentChatNodeId);
-        showToast('Appel connecté ✓');
-      }
-    }, 2000);
+  document.getElementById('btnCall').onclick = async () => {
+    await startOutgoingCall(state.currentChatNodeId);
   };
 
-  document.getElementById('btnStartCall').onclick = () => {
+  document.getElementById('btnStartCall').onclick = async () => {
     const target = document.getElementById('callTarget').value;
-    if (!target) { showToast('Sélectionnez un pair', 'error'); return; }
-    showCallOverlay('outgoing', target);
-    showToast('Appel en cours...', 'info');
-    setTimeout(() => {
-      if (state.callState === 'outgoing') {
-        state.callState = 'active';
-        showCallOverlay('active', target);
-        showToast('Appel connecté ✓');
-      }
-    }, 2000);
+    await startOutgoingCall(target);
   };
 
   // File upload

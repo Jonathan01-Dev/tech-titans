@@ -1,4 +1,5 @@
 import dgram from 'dgram';
+import os from 'os';
 import { CONFIG } from '../config.js';
 import { buildPacket, parsePacket } from './packet.js';
 import { PeerTable } from './peerTable.js';
@@ -13,6 +14,8 @@ export class Discovery {
   private peerTable: PeerTable;
   private running: boolean;
   private joinedIfaces: string[];
+  private localAddresses: Set<string>;
+  private duplicateSelfWarnedFrom: Set<string>;
 
   constructor(identity: Identity, tcpPort: number, peerTable: PeerTable) {
     this.identity = identity;
@@ -21,6 +24,17 @@ export class Discovery {
     this.helloInterval = null;
     this.running = false;
     this.joinedIfaces = [];
+    this.localAddresses = new Set<string>(['127.0.0.1', '0.0.0.0']);
+    this.duplicateSelfWarnedFrom = new Set<string>();
+    const interfaces = os.networkInterfaces();
+    for (const entries of Object.values(interfaces)) {
+      if (!entries) continue;
+      for (const entry of entries) {
+        if (entry.family === 'IPv4' && entry.address) {
+          this.localAddresses.add(entry.address);
+        }
+      }
+    }
   }
 
   private debugLog(message: string): void {
@@ -56,6 +70,13 @@ export class Discovery {
         }
 
         if (isSelf) {
+          if (!this.localAddresses.has(rinfo.address) && !this.duplicateSelfWarnedFrom.has(rinfo.address)) {
+            this.duplicateSelfWarnedFrom.add(rinfo.address);
+            console.warn(
+              `[Discovery] Alerte: HELLO avec le meme NodeId recu depuis ${rinfo.address}. ` +
+                'Deux machines partagent probablement la meme identite (.archipel/identity.json).'
+            );
+          }
           this.debugLog('Ignored self HELLO packet');
           return;
         }
