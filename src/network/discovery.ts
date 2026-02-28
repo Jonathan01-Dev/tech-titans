@@ -78,6 +78,10 @@ export class Discovery {
         console.log(`[Discovery] Pair: ${packetNodeIdHex.slice(0, 16)}... @ ${rinfo.address}:${payload.tcp_port}`);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        if (message === 'Invalid packet MAGIC' || message === 'Incomplete packet payload/signature') {
+          this.debugLog(`Ignored non-Archipel UDP datagram: ${message}`);
+          return;
+        }
         console.error('[Discovery] Message ignore:', message);
       }
     });

@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import type { FileManifest, Peer } from '../types/index.js';
 import { TcpClient } from '../network/client.js';
 import { buildPacket, parsePacket } from '../network/packet.js';
-import { decrypt } from '../crypto/cipher.js';
+import { encrypt, decrypt } from '../crypto/cipher.js';
 import { PacketType } from '../types/index.js';
 import { CONFIG } from '../config.js';
 import { reassembleFile } from './chunker.js';
@@ -18,6 +18,7 @@ export class DownloadManager {
   private completedChunks: Map<number, Buffer>;
   private outputDir: string;
   private localNodeId: string;
+  private peerCursor: number;
 
   constructor(
     manifest: FileManifest,
@@ -37,6 +38,21 @@ export class DownloadManager {
     this.completedChunks = new Map<number, Buffer>();
     this.outputDir = outputDir;
     this.localNodeId = localNodeId;
+    this.peerCursor = 0;
+  }
+
+  private nodeIdToBuffer(nodeId: string): Buffer {
+    const normalized = nodeId.trim().toLowerCase();
+    if (/^[0-9a-f]{64}$/.test(normalized)) {
+      return Buffer.from(normalized, 'hex');
+    }
+    return crypto.createHash('sha256').update(nodeId).digest();
+  }
+
+  private nextPeer(): Peer {
+    const peer = this.peers[this.peerCursor % this.peers.length];
+    this.peerCursor = (this.peerCursor + 1) % this.peers.length;
+    return peer;
   }
 
   private takeNextChunk(peerNodeId: string): number | null {
@@ -64,15 +80,16 @@ export class DownloadManager {
   }
 
   private async worker(peer: Peer): Promise<void> {
+    let currentPeer = peer;
     while (this.pendingChunks.size > 0) {
-      const chunkIndex = this.takeNextChunk(peer.nodeId);
+      const chunkIndex = this.takeNextChunk(currentPeer.nodeId);
       if (chunkIndex === null) {
         await new Promise<void>((resolve) => setTimeout(resolve, 50));
         continue;
       }
 
       try {
-        const data = await this.requestChunk(peer, chunkIndex);
+        const data = await this.requestChunk(currentPeer, chunkIndex);
         const expected = this.manifest.chunks[chunkIndex];
         const actualHash = crypto.createHash('sha256').update(data).digest('hex');
 
@@ -86,6 +103,7 @@ export class DownloadManager {
         this.pendingChunks.delete(chunkIndex);
         this.inProgress.delete(chunkIndex);
         console.log(`[DL] Chunk ${chunkIndex + 1}/${this.manifest.nbChunks} OK`);
+        currentPeer = this.nextPeer();
       } catch {
         this.inProgress.delete(chunkIndex);
         console.log(`[DL] Pair injoignable, chunk ${chunkIndex} remis en file`);
@@ -150,7 +168,7 @@ export class DownloadManager {
         'utf8'
       );
 
-      const req = buildPacket(PacketType.CHUNK_REQ, Buffer.from(peer.nodeId.padEnd(64, '0').slice(0, 64), 'hex'), payload);
+      const req = buildPacket(PacketType.CHUNK_REQ, this.nodeIdToBuffer(this.localNodeId), payload);
       await client.sendPacket(socket, req);
 
       const responseRaw = await this.readPacket(socket);

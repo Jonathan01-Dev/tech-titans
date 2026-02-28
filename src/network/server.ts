@@ -162,9 +162,17 @@ export class TcpServer extends EventEmitter {
         data?: string;
       };
 
-      if (body.data) {
-        this.storeChunk(body.fileId, body.chunkIndex, Buffer.from(body.data, 'hex'));
+      if (!body.fileId || typeof body.chunkIndex !== 'number' || !body.data) {
+        const invalid = buildPacket(
+          PacketType.ACK,
+          Buffer.from(this.identity.sign.publicKey),
+          Buffer.from(JSON.stringify({ status: 0x01 }), 'utf8')
+        );
+        socket.write(invalid);
+        return true;
       }
+
+      this.storeChunk(body.fileId, body.chunkIndex, Buffer.from(body.data, 'hex'));
 
       const ack = buildPacket(
         PacketType.ACK,

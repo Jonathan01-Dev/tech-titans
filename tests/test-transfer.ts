@@ -6,7 +6,7 @@ import { serializeManifest, deserializeManifest, encryptManifest, decryptManifes
 import { DownloadManager } from '../src/transfer/downloader.js';
 import { TcpServer } from '../src/network/server.js';
 import { loadIdentity } from '../src/crypto/identity.js';
-import type { Chunk, Peer } from '../src/types/index.js';
+import type { Peer } from '../src/types/index.js';
 
 async function ensureTestFile(filePath: string): Promise<void> {
   try {
@@ -45,7 +45,7 @@ async function run(): Promise<void> {
       chunkMap.set(chunk.index, chunk.data);
       chunkCount += 1;
     }
-    console.log(`Chunking : ${chunkCount} chunks generes - OK`);
+    console.log(`Chunking : ${chunkCount} chunks générés - OK`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`ERREUR ETAPE 2 : ${message}`);
@@ -63,7 +63,7 @@ async function run(): Promise<void> {
     if (JSON.stringify(parsed) !== JSON.stringify(manifest)) {
       throw new Error('Manifest mismatch apres deserialize');
     }
-    console.log('Manifest : serialise/deserialise - OK');
+    console.log('Manifest : sérialisé/désérialisé - OK');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`ERREUR ETAPE 3 : ${message}`);
@@ -78,7 +78,7 @@ async function run(): Promise<void> {
     if (decrypted.fileId !== manifest.fileId) {
       throw new Error('fileId mismatch apres decrypt manifest');
     }
-    console.log('Manifest chiffre : OK');
+    console.log('Manifest chiffré : OK');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`ERREUR ETAPE 4 : ${message}`);
@@ -142,7 +142,7 @@ async function run(): Promise<void> {
       throw new Error('Hash final transfert invalide');
     }
     rebuiltHash = dlHash;
-    console.log('Transfert simule : SHA-256 valide - OK');
+    console.log('Transfert simulé : SHA-256 validé - OK');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`ERREUR ETAPE 6 : ${message}`);
@@ -151,11 +151,11 @@ async function run(): Promise<void> {
 
   console.log('ARCHIPEL - Test Transfer Sprint 3');
   console.log('-----------------------------------------');
-  console.log(`Chunking          : ${chunkCount} chunks generes - OK`);
-  console.log('Manifest          : serialise/deserialise - OK');
-  console.log('Manifest chiffre  : OK');
+  console.log(`Chunking          : ${chunkCount} chunks générés - OK`);
+  console.log('Manifest          : sérialisé/désérialisé - OK');
+  console.log('Manifest chiffré  : OK');
   console.log('Reconstruction    : SHA-256 identique - OK');
-  console.log('Transfert simule  : SHA-256 valide - OK');
+  console.log('Transfert simulé  : SHA-256 validé - OK');
   console.log('-----------------------------------------');
   console.log(`Fichier source      : ${sourceHash}`);
   console.log(`Fichier reconstruit : ${rebuiltHash}`);

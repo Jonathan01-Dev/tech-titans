@@ -22,7 +22,7 @@ async function run(): Promise<void> {
   const fileData = await fs.readFile(OUTPUT);
   const hash = crypto.createHash('sha256').update(fileData).digest('hex');
 
-  console.log('Fichier test genere : 50 Mo - test-50mb.bin');
+  console.log('Fichier test généré : 50 Mo  test-50mb.bin');
   console.log(`SHA-256 : ${hash}`);
 }
 
