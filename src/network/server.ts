@@ -5,7 +5,6 @@ import { parsePacket, buildPacket } from './packet.js';
 import type { FileManifest, Identity } from '../types/index.js';
 import { PacketType } from '../types/index.js';
 import { encrypt } from '../crypto/cipher.js';
-export { BleDiscovery, createBleDiscovery } from './ble-discovery.js';
 
 type PacketData = { type: number; nodeId: Buffer; payload: Buffer; signature: Buffer };
 type PacketHandler = (socket: net.Socket, packet: PacketData) => void | Promise<void>;
