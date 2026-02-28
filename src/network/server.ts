@@ -156,13 +156,50 @@ export class TcpServer extends EventEmitter {
     }
 
     if (pkt.type === PacketType.CHUNK_DATA) {
-      const body = JSON.parse(pkt.payload.toString('utf8')) as {
-        fileId: string;
-        chunkIndex: number;
-        data?: string;
-      };
+      let fileId = '';
+      let chunkIndex = -1;
+      let chunkData: Buffer | null = null;
 
-      if (!body.fileId || typeof body.chunkIndex !== 'number' || !body.data) {
+      // Format recent: JSON { fileId, chunkIndex, data(hex) }
+      try {
+        const body = JSON.parse(pkt.payload.toString('utf8')) as {
+          fileId?: string;
+          chunkIndex?: number;
+          data?: string;
+        };
+
+        if (body.fileId && typeof body.chunkIndex === 'number' && body.data) {
+          fileId = body.fileId;
+          chunkIndex = body.chunkIndex;
+          chunkData = Buffer.from(body.data, 'hex');
+        }
+      } catch {
+        // Format legacy: [4 bytes metaLen][meta JSON][raw chunk bytes]
+        if (pkt.payload.length >= 4) {
+          const metaLen = pkt.payload.readUInt32BE(0);
+          const metaStart = 4;
+          const metaEnd = metaStart + metaLen;
+
+          if (metaLen > 0 && metaEnd <= pkt.payload.length) {
+            try {
+              const meta = JSON.parse(pkt.payload.subarray(metaStart, metaEnd).toString('utf8')) as {
+                fileId?: string;
+                index?: number;
+              };
+
+              if (meta.fileId && typeof meta.index === 'number') {
+                fileId = meta.fileId;
+                chunkIndex = meta.index;
+                chunkData = pkt.payload.subarray(metaEnd);
+              }
+            } catch {
+              // invalid legacy payload
+            }
+          }
+        }
+      }
+
+      if (!fileId || chunkIndex < 0 || !chunkData) {
         const invalid = buildPacket(
           PacketType.ACK,
           Buffer.from(this.identity.sign.publicKey),
@@ -172,7 +209,7 @@ export class TcpServer extends EventEmitter {
         return true;
       }
 
-      this.storeChunk(body.fileId, body.chunkIndex, Buffer.from(body.data, 'hex'));
+      this.storeChunk(fileId, chunkIndex, chunkData);
 
       const ack = buildPacket(
         PacketType.ACK,
