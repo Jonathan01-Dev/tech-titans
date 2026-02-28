@@ -11,3 +11,4 @@ tests/*.js
 tests/*.d.ts
 tests/*.js.map
 tests/*.d.ts.map
+.env

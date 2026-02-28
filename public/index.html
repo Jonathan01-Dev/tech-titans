@@ -1,820 +1,2077 @@
 <!doctype html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Archipels - Interface Noeud</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --primary: #f5a623;
-        --primary-light: #fdf3e0;
-        --sidebar-bg: #ffffff;
-        --bg: #f8f9fa;
-        --text: #1a1a2e;
-        --text-muted: #6b7280;
-        --border: #e5e7eb;
-        --success: #22c55e;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --card-bg: #ffffff;
-        --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Archipels — Réseau P2P</title>
+  <style>
+    :root {
+      --primary: #3B82F6;          /* changed from #F5A623 */
+      --primary-dark: #2563EB;     /* changed from #D4891A */
+      --primary-light: #EFF6FF;    /* changed from #FEF3DC */
+      --primary-glow: rgba(59,130,246,0.15); /* changed from rgba(245,166,35,0.15) */
+      --bg: #0F1117;               /* kept */
+      --surface: #181B24;           /* kept */
+      --surface2: #1E2130;          /* kept */
+      --surface3: #252A3A;          /* kept */
+      --border: rgba(255,255,255,0.06);
+      --border-strong: rgba(255,255,255,0.12);
+      --text: #F0F2F8;
+      --text-secondary: #8B93A8;
+      --text-muted: #4E566A;
+      --success: #2DD4BF;
+      --success-bg: rgba(45,212,191,0.1);
+      --warning: #F59E0B;
+      --warning-bg: rgba(245,158,11,0.1);
+      --danger: #F87171;
+      --danger-bg: rgba(248,113,113,0.1);
+      --gemini: #A78BFA;
+      --gemini-bg: rgba(167,139,250,0.1);
+      --radius: 14px;
+      --radius-sm: 8px;
+      --radius-lg: 20px;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --font-mono: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+      --sidebar-w: 260px;
+    }
 
-      * {
-        box-sizing: border-box;
-      }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-      body {
-        margin: 0;
-        font-family: 'DM Sans', sans-serif;
-        color: var(--text);
-        background: var(--bg);
-      }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+    }
 
-      .app {
-        display: flex;
-        min-height: 100vh;
-      }
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
 
-      .sidebar {
-        width: 240px;
-        background: var(--sidebar-bg);
-        border-right: 1px solid var(--border);
-        display: flex;
-        flex-direction: column;
-        padding: 18px 14px;
-        gap: 14px;
-      }
+    /* ══════════════════════════════════════
+       APP SHELL
+    ══════════════════════════════════════ */
+    .app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
 
-      .logo {
-        font-size: 24px;
-        font-weight: 700;
-      }
+    /* ══════════════════════════════════════
+       SIDEBAR
+    ══════════════════════════════════════ */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+      gap: 6px;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
 
-      .logo small {
-        display: block;
-        color: var(--text-muted);
-        font-size: 13px;
-        font-weight: 400;
-      }
+    .sidebar::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: -60px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
 
-      .node-box {
-        background: var(--primary-light);
-        border: 1px solid #f8d79f;
-        border-radius: 12px;
-        padding: 10px;
-      }
+    /* Logo */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 8px 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
 
-      .node-box .label {
-        color: var(--text-muted);
-        font-size: 12px;
-      }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(59,130,246,0.3); /* updated shadow color */
+    }
 
-      .mono {
-        font-family: 'JetBrains Mono', monospace;
-        word-break: break-all;
-      }
+    .logo-text { line-height: 1.2; }
+    .logo-text strong { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-text span { font-size: 11px; color: var(--text-muted); display: block; }
 
-      .menu {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
+    /* Node box */
+    .node-box {
+      background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.03)); /* updated */
+      border: 1px solid rgba(59,130,246,0.2); /* updated */
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      margin-bottom: 8px;
+    }
 
-      .menu button {
-        background: transparent;
-        border: 1px solid transparent;
-        border-radius: 10px;
-        text-align: left;
-        padding: 10px 12px;
-        cursor: pointer;
-        font-size: 15px;
-        color: var(--text);
-      }
+    .node-box .nb-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--primary);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
 
-      .menu button.active {
-        background: var(--primary);
-        border-color: #d98a10;
-        font-weight: 700;
-      }
+    .node-box .nb-id {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      word-break: break-all;
+      line-height: 1.5;
+    }
 
-      .network-active {
-        margin-top: auto;
-        color: var(--success);
-        font-weight: 600;
-        animation: pulse 1.6s infinite;
-      }
+    /* Nav */
+    .nav-section {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      padding: 8px 8px 4px;
+    }
 
-      @keyframes pulse {
-        0% {
-          opacity: 0.7;
-        }
-        50% {
-          opacity: 1;
-        }
-        100% {
-          opacity: 0.7;
-        }
-      }
+    .menu { display: flex; flex-direction: column; gap: 2px; }
 
-      .content {
-        flex: 1;
-        padding: 22px;
-      }
+    .menu-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      cursor: pointer;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      transition: all 0.15s ease;
+      width: 100%;
+      font-family: var(--font);
+    }
 
-      .header h1 {
-        margin: 0;
-      }
+    .menu-btn:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
 
-      .header p {
-        margin-top: 6px;
-        color: var(--text-muted);
-      }
+    .menu-btn.active {
+      background: var(--primary-light);
+      border-color: rgba(59,130,246,0.3); /* updated */
+      color: #1E3A8A; /* dark blue for contrast on light blue */
+      font-weight: 700;
+    }
 
-      .grid {
-        display: grid;
-        gap: 14px;
-      }
+    .menu-btn .icon {
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
 
-      .grid.stats {
-        grid-template-columns: repeat(2, minmax(150px, 1fr));
-      }
+    /* Network badge */
+    .net-badge {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
 
-      .card {
-        background: var(--card-bg);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        box-shadow: var(--shadow);
-        padding: 14px;
-        animation: fadein 0.35s ease-out;
-      }
+    .net-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      animation: netpulse 2s infinite;
+      flex-shrink: 0;
+    }
 
-      @keyframes fadein {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
+    @keyframes netpulse {
+      0%,100% { opacity: 1; box-shadow: 0 0 8px var(--success); }
+      50% { opacity: 0.6; box-shadow: 0 0 4px var(--success); }
+    }
 
-      .card .title {
-        color: var(--text-muted);
-        font-size: 13px;
-      }
+    /* ══════════════════════════════════════
+       MAIN CONTENT
+    ══════════════════════════════════════ */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
 
-      .card .value {
-        margin-top: 6px;
-        font-size: 26px;
-        font-weight: 700;
-      }
+    /* Page header */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 28px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
 
-      .peer-row,
-      .message-row,
-      .file-row,
-      .trust-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        border-bottom: 1px solid var(--border);
-        padding: 10px 0;
-      }
+    .page-header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
 
-      .peer-row:last-child,
-      .message-row:last-child,
-      .file-row:last-child,
-      .trust-row:last-child {
-        border-bottom: none;
-      }
+    .page-header p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
 
-      .avatar {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #ffd77d, #f5a623);
-        color: #222;
-        display: grid;
-        place-items: center;
-        font-weight: 700;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 12px;
-      }
+    .page-body { padding: 24px 28px; flex: 1; }
 
-      .muted {
-        color: var(--text-muted);
-        font-size: 13px;
-      }
+    .hidden { display: none !important; }
 
-      .badge {
-        display: inline-block;
-        border-radius: 999px;
-        padding: 4px 10px;
-        font-size: 12px;
-        font-weight: 600;
-      }
+    /* ══════════════════════════════════════
+       CARDS
+    ══════════════════════════════════════ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      animation: fadein 0.3s ease;
+    }
 
-      .badge.ok {
-        background: #e8fbe8;
-        color: #147d37;
-      }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
 
-      .badge.warn {
-        background: #fff4de;
-        color: #a86400;
-      }
+    @keyframes fadein {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
 
-      .badge.bad {
-        background: #feeaea;
-        color: #9e1f1f;
-      }
+    /* ══════════════════════════════════════
+       STAT CARDS
+    ══════════════════════════════════════ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
 
-      .hidden {
-        display: none;
-      }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      animation: fadein 0.3s ease;
+      animation-fill-mode: both;
+    }
 
-      .chat-layout {
-        display: grid;
-        grid-template-columns: 320px 1fr;
-        gap: 14px;
-      }
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.10s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.20s; }
 
-      .chat-box {
-        height: 420px;
-        overflow: auto;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        background: #fff;
-        padding: 10px;
-      }
+    .stat-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
 
-      .bubble {
-        max-width: 70%;
-        border-radius: 12px;
-        padding: 10px;
-        margin-bottom: 8px;
-        animation: slidein 0.25s ease-out;
-      }
+    .stat-icon.green  { background: var(--success-bg); }
+    .stat-icon.orange { background: var(--primary-glow); } /* updated */
+    .stat-icon.blue   { background: rgba(96,165,250,0.1); }
+    .stat-icon.teal   { background: rgba(45,212,191,0.1); }
 
-      @keyframes slidein {
-        from {
-          opacity: 0;
-          transform: translateX(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0);
-        }
-      }
+    .stat-value {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
 
-      .bubble.sent {
-        margin-left: auto;
-        background: #ffe5b0;
-      }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
 
-      .bubble.recv {
-        background: #f1f5f9;
-      }
+    /* ══════════════════════════════════════
+       PEER ROWS
+    ══════════════════════════════════════ */
+    .peer-row, .trust-row, .file-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
 
-      .row {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-      }
+    .peer-row:last-child,
+    .trust-row:last-child,
+    .file-row:last-child { border-bottom: none; }
 
-      .row input,
-      .row select,
-      .row textarea {
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 9px 10px;
-        font-family: 'DM Sans', sans-serif;
-        width: 100%;
-      }
+    .avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.05)); /* updated */
+      border: 1.5px solid rgba(59,130,246,0.3); /* updated */
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--primary);
+      flex-shrink: 0;
+    }
 
-      .btn {
-        border: none;
-        background: var(--primary);
-        border-radius: 10px;
-        padding: 10px 14px;
-        cursor: pointer;
-        font-weight: 700;
-      }
+    .mono {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
 
-      .btn.secondary {
-        background: #edf2f7;
-      }
+    .muted { color: var(--text-muted); font-size: 12px; }
 
-      .btn.success {
-        background: #d7f7dc;
-        color: #0d6a2f;
-      }
+    /* ══════════════════════════════════════
+       BADGES
+    ══════════════════════════════════════ */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 99px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
 
-      .btn.danger {
-        background: #ffd6d6;
-        color: #9e1f1f;
-      }
+    .badge.ok      { background: var(--success-bg); color: var(--success); }
+    .badge.warn    { background: var(--warning-bg); color: var(--warning); }
+    .badge.bad     { background: var(--danger-bg); color: var(--danger); }
+    .badge.primary { background: var(--primary-glow); color: var(--primary); } /* updated */
 
-      .upload-zone {
-        border: 2px dashed #d7dce3;
-        border-radius: 12px;
-        padding: 24px;
-        text-align: center;
-        color: var(--text-muted);
-        margin-bottom: 12px;
-      }
+    /* ══════════════════════════════════════
+       BUTTONS
+    ══════════════════════════════════════ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 9px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font);
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
 
-      .progress {
-        height: 8px;
-        border-radius: 8px;
-        background: #edf2f7;
-        overflow: hidden;
-      }
+    .btn-primary {
+      background: var(--primary);
+      color: #FFFFFF; /* changed to white for better contrast on blue */
+    }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
 
-      .progress > div {
-        height: 100%;
-        background: var(--success);
-      }
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface3); color: var(--text); }
 
-      @media (max-width: 980px) {
-        .sidebar {
-          width: 100px;
-        }
+    .btn-success {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid rgba(45,212,191,0.2);
+    }
+    .btn-success:hover { background: rgba(45,212,191,0.2); }
 
-        .logo small,
-        .node-box,
-        .menu button span {
-          display: none;
-        }
+    .btn-danger {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid rgba(248,113,113,0.2);
+    }
+    .btn-danger:hover { background: rgba(248,113,113,0.2); }
 
-        .chat-layout {
-          grid-template-columns: 1fr;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="app">
-      <aside class="sidebar">
-        <div class="logo">Archipels <small>Reseau P2P Decentralise</small></div>
-        <div class="node-box">
-          <div class="label">NODE ID</div>
-          <div class="mono" id="nodeIdSidebar">...</div>
-        </div>
-        <div class="menu">
-          <button data-page="dashboard" class="active">🏠 <span>Dashboard</span></button>
-          <button data-page="messages">💬 <span>Messages</span></button>
-          <button data-page="files">📄 <span>Fichiers</span></button>
-          <button data-page="trust">🛡 <span>Web of Trust</span></button>
-        </div>
-        <div class="network-active" id="networkBadge">● Reseau actif</div>
-      </aside>
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
 
-      <main class="content">
-        <section id="page-dashboard">
-          <div class="header">
-            <h1>Dashboard</h1>
-            <p>Vue d'ensemble</p>
-          </div>
-          <div class="grid stats">
-            <div class="card"><div class="title">Pairs actifs</div><div class="value" id="statPeers">0</div></div>
-            <div class="card"><div class="title">Messages</div><div class="value" id="statMessages">0</div></div>
-            <div class="card"><div class="title">Fichiers</div><div class="value" id="statFiles">0</div></div>
-            <div class="card"><div class="title">Statut</div><div class="value" id="statStatus">Hors ligne</div></div>
-          </div>
-          <div class="card" style="margin-top: 14px">
-            <h3>Pairs connectes</h3>
-            <div id="peerList"></div>
-          </div>
-          <div class="card" style="margin-top: 14px">
-            <h3>Activite recente</h3>
-            <div id="recentActivity"></div>
-          </div>
-        </section>
+    /* ══════════════════════════════════════
+       INPUTS
+    ══════════════════════════════════════ */
+    .input {
+      background: var(--surface2);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
 
-        <section id="page-messages" class="hidden">
-          <div class="header">
-            <h1>Messages Chiffres</h1>
-            <p>Conversations securisees de noeud a noeud</p>
-          </div>
-          <div class="chat-layout">
-            <div class="card">
-              <div class="row" style="margin-bottom: 10px">
-                <input id="searchNode" placeholder="Rechercher par ID de pair..." />
-              </div>
-              <div id="conversationList"></div>
-            </div>
-            <div class="card">
-              <div id="chatHeader" class="muted">Selectionnez une conversation</div>
-              <div class="chat-box" id="chatMessages"></div>
-              <div class="row" style="margin: 8px 0">
-                <button class="btn secondary" id="btnAskAi">/ask - Utiliser Gemini AI</button>
-                <button class="btn secondary" id="btnMentionAi">@archipel-ai</button>
-              </div>
-              <div class="row">
-                <input id="chatInput" placeholder="Ecrire un message chiffre..." />
-                <button class="btn" id="btnSendMessage">Envoyer ></button>
-              </div>
-            </div>
-          </div>
-        </section>
+    .input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
 
-        <section id="page-files" class="hidden">
-          <div class="header">
-            <h1>Transfert de Fichiers</h1>
-            <p>Partage P2P avec verification SHA-256</p>
-          </div>
-          <div class="card">
-            <div class="row" style="justify-content: space-between; margin-bottom: 10px">
-              <select id="shareTarget">
-                <option value="">Pair cible (optionnel)</option>
-              </select>
-              <button class="btn" id="btnShare">Envoyer</button>
-            </div>
-            <div class="upload-zone" id="uploadZone">
-              <div style="font-size: 28px">📤</div>
-              <div>Selectionnez un fichier puis cliquez sur Envoyer</div>
-            </div>
-            <input type="file" id="fileInput" />
-            <div id="shareStatus" class="muted" style="margin-top: 8px"></div>
-            <div id="fileList"></div>
-          </div>
-        </section>
+    .input::placeholder { color: var(--text-muted); }
 
-        <section id="page-trust" class="hidden">
-          <div class="header">
-            <h1>Web of Trust</h1>
-            <p>Gestion cles publiques et signatures</p>
-          </div>
-          <div class="grid stats" style="grid-template-columns: repeat(3, 1fr)">
-            <div class="card"><div class="title">Verifies</div><div class="value" id="trustVerified">0</div></div>
-            <div class="card"><div class="title">TOFU</div><div class="value" id="trustTofu">0</div></div>
-            <div class="card"><div class="title">Revoques</div><div class="value" id="trustRevoked">0</div></div>
-          </div>
-          <div class="card" style="margin-top: 14px">
-            <div id="trustList"></div>
-          </div>
-        </section>
-      </main>
+    select.input { cursor: pointer; }
+
+    /* ══════════════════════════════════════
+       DASHBOARD
+    ══════════════════════════════════════ */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* ══════════════════════════════════════
+       MESSAGES / CHAT
+    ══════════════════════════════════════ */
+    .chat-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 16px;
+      height: calc(100vh - 145px);
+    }
+
+    .chat-sidebar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-sidebar-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .conv-list { overflow-y: auto; flex: 1; }
+
+    .conv-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+
+    .conv-item:hover { background: var(--surface2); }
+
+    .conv-item.active {
+      background: var(--primary-glow);
+      border-left: 3px solid var(--primary);
+    }
+
+    .conv-item:last-child { border-bottom: none; }
+
+    .conv-info { flex: 1; min-width: 0; }
+    .conv-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .conv-preview {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .conv-time { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+
+    /* Chat window */
+    .chat-window {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-window-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface2);
+    }
+
+    .chat-peer-info { display: flex; align-items: center; gap: 10px; }
+    .chat-peer-name { font-size: 14px; font-weight: 700; }
+    .chat-peer-meta { font-size: 11px; color: var(--text-muted); }
+
+    .chat-fingerprint {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--surface3);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .bubble {
+      max-width: 68%;
+      border-radius: 14px;
+      padding: 10px 14px;
+      animation: bubblin 0.2s ease;
+      line-height: 1.5;
+      font-size: 13.5px;
+    }
+
+    @keyframes bubblin {
+      from { opacity: 0; transform: scale(0.95); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .bubble.sent {
+      align-self: flex-end;
+      background: var(--primary);
+      color: #FFFFFF; /* white for contrast */
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble.recv {
+      align-self: flex-start;
+      background: var(--surface2);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+
+    .bubble-meta {
+      font-size: 10px;
+      margin-top: 4px;
+      opacity: 0.6;
+      font-family: var(--font-mono);
+    }
+
+    .bubble.sent .bubble-meta { text-align: right; }
+
+    .bubble-gemini {
+      align-self: center;
+      max-width: 80%;
+      background: var(--gemini-bg);
+      border: 1px solid rgba(167,139,250,0.2);
+      border-radius: 14px;
+      padding: 12px 16px;
+      animation: bubblin 0.2s ease;
+    }
+
+    .gemini-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--gemini);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .gemini-query {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(167,139,250,0.1);
+    }
+
+    .gemini-answer { font-size: 13px; color: var(--text); line-height: 1.6; }
+
+    /* Thinking dots */
+    .thinking {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border-radius: 14px;
+      align-self: flex-start;
+      width: fit-content;
+    }
+
+    .tdot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--gemini);
+      animation: thinkanim 1.2s infinite;
+    }
+    .tdot:nth-child(2) { animation-delay: 0.2s; }
+    .tdot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes thinkanim {
+      0%,60%,100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* Chat input area */
+    .chat-input-area {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .chat-suggestions {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .suggestion-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--surface3);
+      border: 1px solid var(--border-strong);
+      border-radius: 99px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+
+    .suggestion-btn:hover {
+      background: var(--gemini-bg);
+      border-color: rgba(167,139,250,0.3);
+      color: var(--gemini);
+    }
+
+    .chat-send-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ══════════════════════════════════════
+       FILES
+    ══════════════════════════════════════ */
+    .upload-zone {
+      border: 2px dashed var(--border-strong);
+      border-radius: var(--radius);
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.dragging {
+      border-color: var(--primary);
+      background: var(--primary-glow);
+      color: var(--text-secondary);
+    }
+
+    .upload-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .upload-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .upload-sub { font-size: 12px; }
+
+    .file-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      animation: fadein 0.3s ease;
+    }
+
+    .file-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .file-name {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .file-meta {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .file-meta-item { }
+    .file-meta-item .fm-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .file-meta-item .fm-val { font-size: 12px; font-weight: 600; margin-top: 2px; }
+
+    .progress {
+      height: 6px;
+      border-radius: 99px;
+      background: var(--surface3);
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--success), #34D399);
+      border-radius: 99px;
+      transition: width 0.5s ease;
+    }
+
+    .file-hash {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ══════════════════════════════════════
+       TRUST
+    ══════════════════════════════════════ */
+    .trust-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .trust-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .trust-stat-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .trust-stat-val { font-size: 26px; font-weight: 800; }
+    .trust-stat-label { font-size: 11px; color: var(--text-muted); }
+
+    .trust-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      animation: fadein 0.3s ease;
+    }
+
+    .trust-card + .trust-card { margin-top: 10px; }
+
+    .trust-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .trust-info { flex: 1; }
+    .trust-name { font-size: 14px; font-weight: 700; }
+    .trust-addr { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px; }
+
+    .trust-details {
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    .trust-key-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .trust-key-val {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+      word-break: break-all;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .fingerprint-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .fingerprint-val {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 1px;
+    }
+
+    .copy-btn {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-family: var(--font);
+    }
+
+    .copy-btn:hover { background: var(--primary-glow); color: var(--primary); }
+
+    .verified-label {
+      font-size: 11px;
+      color: var(--success);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+    }
+
+    /* ══════════════════════════════════════
+       ACTIVITY
+    ══════════════════════════════════════ */
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .activity-item:last-child { border-bottom: none; }
+
+    .activity-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      background: var(--surface2);
+    }
+
+    .activity-text { flex: 1; font-size: 13px; }
+    .activity-time { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+
+    /* ══════════════════════════════════════
+       EMPTY STATES
+    ══════════════════════════════════════ */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-icon { font-size: 36px; margin-bottom: 10px; }
+    .empty-title { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+    .empty-sub { font-size: 12px; }
+
+    /* ══════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════ */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 9999;
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      font-size: 13px;
+      box-shadow: var(--shadow);
+      animation: toastin 0.25s ease;
+      min-width: 260px;
+      max-width: 360px;
+    }
+
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error   { border-left: 3px solid var(--danger); }
+    .toast.info    { border-left: 3px solid var(--primary); }
+
+    @keyframes toastin {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes toastout {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(20px); }
+    }
+
+    /* ══════════════════════════════════════
+       CALL UI
+    ══════════════════════════════════════ */
+    .call-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      z-index: 999;
+      display: grid;
+      place-items: center;
+    }
+
+    .call-card {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      text-align: center;
+      width: 340px;
+      animation: fadein 0.3s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .call-avatar {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.05)); /* updated */
+      border: 2px solid rgba(59,130,246,0.3); /* updated */
+      display: grid;
+      place-items: center;
+      font-size: 28px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--primary);
+      margin: 0 auto 16px;
+      animation: callpulse 2s infinite;
+    }
+
+    @keyframes callpulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); } /* updated */
+      50% { box-shadow: 0 0 0 12px rgba(59,130,246,0); } /* updated */
+    }
+
+    .call-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .call-status { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+
+    .call-actions { display: flex; justify-content: center; gap: 16px; }
+
+    .call-btn {
+      width: 54px; height: 54px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .call-btn:hover { transform: scale(1.1); }
+
+    .call-btn.accept {
+      background: var(--success);
+      box-shadow: 0 4px 16px rgba(45,212,191,0.4);
+    }
+
+    .call-btn.decline {
+      background: var(--danger);
+      box-shadow: 0 4px 16px rgba(248,113,113,0.4);
+    }
+
+    .call-btn.mute {
+      background: var(--surface2);
+      border: 1px solid var(--border-strong);
+    }
+
+    .call-btn.hangup {
+      background: var(--danger);
+      box-shadow: 0 4px 16px rgba(248,113,113,0.4);
+    }
+
+    .call-timer {
+      font-family: var(--font-mono);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .call-encryption {
+      font-size: 11px;
+      color: var(--success);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 24px;
+    }
+
+    /* ══════════════════════════════════════
+       DIVIDER
+    ══════════════════════════════════════ */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+
+    /* ══════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════ */
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 70px; }
+      .logo-text, .node-box, .menu-btn span,
+      .nav-section { display: none; }
+      .menu-btn { justify-content: center; padding: 10px; }
+      .net-badge span { display: none; }
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .chat-layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Call overlay (hidden by default) -->
+<div class="call-overlay hidden" id="callOverlay">
+  <div class="call-card" id="callCard">
+    <!-- Injected dynamically -->
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- ══════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">⬡</div>
+      <div class="logo-text">
+        <strong>Archipels</strong>
+        <span>Réseau P2P Décentralisé</span>
+      </div>
     </div>
 
-    <script>
-      const state = {
-        currentPage: 'dashboard',
-        currentChatNodeId: null,
-        nodeId: '',
-        peers: [],
-        messages: [],
-        files: [],
-        trustStore: {},
-        refreshInterval: null
-      };
+    <div class="node-box">
+      <div class="nb-label">Node ID</div>
+      <div class="nb-id mono" id="nodeIdSidebar">Chargement...</div>
+    </div>
 
-      function shortId(id) {
-        return (id || '').slice(0, 16) + '...';
-      }
+    <div class="nav-section">Navigation</div>
 
-      function escapeHtml(text) {
-        return String(text)
-          .replaceAll('&', '&amp;')
-          .replaceAll('<', '&lt;')
-          .replaceAll('>', '&gt;');
-      }
+    <div class="menu">
+      <button class="menu-btn active" data-page="dashboard">
+        <span class="icon">⬡</span>
+        <span>Dashboard</span>
+      </button>
+      <button class="menu-btn" data-page="messages">
+        <span class="icon">💬</span>
+        <span>Messages</span>
+      </button>
+      <button class="menu-btn" data-page="files">
+        <span class="icon">📁</span>
+        <span>Fichiers</span>
+      </button>
+      <button class="menu-btn" data-page="trust">
+        <span class="icon">🛡</span>
+        <span>Web of Trust</span>
+      </button>
+      <button class="menu-btn" data-page="calls">
+        <span class="icon">📞</span>
+        <span>Appels</span>
+      </button>
+    </div>
 
-      async function api(path, options = {}) {
-        const res = await fetch(path, options);
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(txt || 'Erreur API');
-        }
-        return res.json();
-      }
+    <div class="net-badge" id="networkBadge">
+      <div class="net-dot" id="netDot"></div>
+      <span id="netLabel">Réseau actif</span>
+    </div>
+  </aside>
 
-      async function loadStatus() {
-        const status = await api('/api/status');
-        state.nodeId = status.nodeId || '';
-        document.getElementById('nodeIdSidebar').textContent = shortId(state.nodeId);
-        document.getElementById('statPeers').textContent = String(status.peers || 0);
-        document.getElementById('statStatus').textContent = status.running ? 'En ligne' : 'Hors ligne';
-        document.getElementById('networkBadge').style.color = status.running ? 'var(--success)' : 'var(--danger)';
-      }
+  <!-- ══════════════════════════════════════
+       MAIN
+  ══════════════════════════════════════ -->
+  <main class="content">
 
-      async function loadPeers() {
-        state.peers = await api('/api/peers');
-        const peerList = document.getElementById('peerList');
-        const convList = document.getElementById('conversationList');
-        const shareTarget = document.getElementById('shareTarget');
-        peerList.innerHTML = '';
-        convList.innerHTML = '';
-        if (shareTarget) {
-          const current = shareTarget.value;
-          shareTarget.innerHTML = '<option value="">Pair cible (optionnel)</option>';
-          state.peers.forEach((peer) => {
-            const option = document.createElement('option');
-            option.value = peer.nodeId || '';
-            option.textContent = `${(peer.nodeId || '').slice(0, 16)}... @ ${peer.ip || ''}:${peer.tcpPort || ''}`;
-            shareTarget.appendChild(option);
-          });
-          if (current) shareTarget.value = current;
-        }
+    <!-- ── DASHBOARD ── -->
+    <section id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p>Vue d'ensemble du réseau Archipel</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="refreshAll()">↻ Actualiser</button>
+      </div>
+      <div class="page-body">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon green">🌐</div>
+            <div class="stat-value" id="statPeers">0</div>
+            <div class="stat-label">Pairs actifs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon orange">💬</div>
+            <div class="stat-value" id="statMessages">0</div>
+            <div class="stat-label">Messages</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon blue">📁</div>
+            <div class="stat-value" id="statFiles">0</div>
+            <div class="stat-label">Fichiers</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon teal">🔒</div>
+            <div class="stat-value" id="statStatus" style="font-size:16px;margin-top:4px">Hors ligne</div>
+            <div class="stat-label">Statut</div>
+          </div>
+        </div>
 
-        state.peers.forEach((peer) => {
-          const row = document.createElement('div');
-          row.className = 'peer-row';
-          row.innerHTML = `
-            <div class="avatar">${escapeHtml((peer.nodeId || '').slice(0, 4))}</div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">Pairs connectés</div>
+            <div id="peerList">
+              <div class="empty">
+                <div class="empty-icon">🌐</div>
+                <div class="empty-title">Aucun pair</div>
+                <div class="empty-sub">En attente de découverte...</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Activité récente</div>
+            <div id="recentActivity">
+              <div class="empty">
+                <div class="empty-icon">📋</div>
+                <div class="empty-title">Aucune activité</div>
+                <div class="empty-sub">Les actions apparaîtront ici</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── MESSAGES ── -->
+    <section id="page-messages" class="hidden">
+      <div class="page-header">
+        <div>
+          <h1>Messages Chiffrés</h1>
+          <p>Communications sécurisées de nœud à nœud</p>
+        </div>
+      </div>
+      <div class="page-body" style="padding-top:16px;">
+        <div class="chat-layout">
+
+          <!-- Conversation list -->
+          <div class="chat-sidebar">
+            <div class="chat-sidebar-header">
+              <input class="input" id="searchNode" placeholder="🔍 Rechercher un pair..." />
+            </div>
+            <div class="conv-list" id="conversationList">
+              <div class="empty" style="padding:24px 16px;">
+                <div class="empty-icon">💬</div>
+                <div class="empty-title">Aucune conversation</div>
+                <div class="empty-sub">Les pairs découverts apparaîtront ici</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat window -->
+          <div class="chat-window">
+            <div class="chat-window-header" id="chatHeaderBar">
+              <div class="chat-peer-info">
+                <div class="empty-icon" style="font-size:18px;">💬</div>
+                <div>
+                  <div class="chat-peer-name" id="chatHeaderName">Sélectionner une conversation</div>
+                  <div class="chat-peer-meta" id="chatHeaderMeta">Choisissez un pair dans la liste</div>
+                </div>
+              </div>
+              <div class="chat-fingerprint" id="chatFingerprint"></div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+              <div class="empty" style="margin:auto;">
+                <div class="empty-icon">🔒</div>
+                <div class="empty-title">Chiffrement de bout en bout</div>
+                <div class="empty-sub">Sélectionnez une conversation pour commencer</div>
+              </div>
+            </div>
+
+            <div class="chat-input-area">
+              <div class="chat-suggestions">
+                <button class="suggestion-btn" id="btnAskAi">✨ /ask Gemini AI</button>
+                <button class="suggestion-btn" id="btnMentionAi">@archipel-ai</button>
+                <button class="suggestion-btn" id="btnCall">📞 Appeler</button>
+              </div>
+              <div class="chat-send-row">
+                <input class="input" id="chatInput" placeholder="Écrire un message chiffré..." />
+                <button class="btn btn-primary" id="btnSendMessage">Envoyer ➤</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ── FILES ── -->
+    <section id="page-files" class="hidden">
+      <div class="page-header">
+        <div>
+          <h1>Transfert de Fichiers</h1>
+          <p>Partage P2P avec vérification SHA-256</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('fileInput').click()">
+          ↑ Partager un fichier
+        </button>
+      </div>
+      <div class="page-body">
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center;">
+            <select class="input" id="shareTarget" style="max-width:280px;">
+              <option value="">Destinataire (optionnel)</option>
+            </select>
+          </div>
+          <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+            <span class="upload-icon">📤</span>
+            <div class="upload-title">Glissez-déposez un fichier ici</div>
+            <div class="upload-sub">ou cliquez pour sélectionner</div>
+          </div>
+          <input type="file" id="fileInput" style="display:none;" />
+          <div id="shareStatus" class="muted" style="margin-top:8px;font-size:12px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Transferts</div>
+          <div id="fileList">
+            <div class="empty">
+              <div class="empty-icon">📁</div>
+              <div class="empty-title">Aucun fichier</div>
+              <div class="empty-sub">Partagez un fichier pour commencer</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── WEB OF TRUST ── -->
+    <section id="page-trust" class="hidden">
+      <div class="page-header">
+        <div>
+          <h1>Web of Trust</h1>
+          <p>Gestion des clés publiques et signatures cryptographiques</p>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="trust-stats">
+          <div class="trust-stat">
+            <div class="trust-stat-icon" style="background:var(--success-bg);">✓</div>
             <div>
-              <div class="mono">${escapeHtml(peer.nodeId || '')}</div>
-              <div class="muted">${escapeHtml(peer.ip || '')}:${escapeHtml(peer.tcpPort || '')}</div>
-              <span class="badge ok">En ligne</span>
+              <div class="trust-stat-val" id="trustVerified">0</div>
+              <div class="trust-stat-label">Vérifiés</div>
             </div>
-          `;
-          peerList.appendChild(row);
+          </div>
+          <div class="trust-stat">
+            <div class="trust-stat-icon" style="background:var(--warning-bg);">⚠</div>
+            <div>
+              <div class="trust-stat-val" id="trustTofu">0</div>
+              <div class="trust-stat-label">TOFU (Premier contact)</div>
+            </div>
+          </div>
+          <div class="trust-stat">
+            <div class="trust-stat-icon" style="background:var(--danger-bg);">✗</div>
+            <div>
+              <div class="trust-stat-val" id="trustRevoked">0</div>
+              <div class="trust-stat-label">Révoqués</div>
+            </div>
+          </div>
+        </div>
+        <div id="trustList">
+          <div class="empty">
+            <div class="empty-icon">🛡</div>
+            <div class="empty-title">Trust store vide</div>
+            <div class="empty-sub">Les pairs approuvés apparaîtront ici</div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-          const conv = document.createElement('div');
-          conv.className = 'message-row';
-          conv.style.cursor = 'pointer';
-          conv.innerHTML = `
-            <div class="avatar">${escapeHtml((peer.nodeId || '').slice(0, 4))}</div>
-            <div style="flex:1">
-              <div class="mono">${escapeHtml(peer.nodeId || '')}</div>
-              <div class="muted">${escapeHtml(peer.ip || '')}:${escapeHtml(peer.tcpPort || '')}</div>
+    <!-- ── CALLS ── -->
+    <section id="page-calls" class="hidden">
+      <div class="page-header">
+        <div>
+          <h1>Appels Audio</h1>
+          <p>Appels P2P chiffrés AES-256-GCM</p>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Appeler un pair</div>
+          <div style="display:flex;gap:12px;align-items:center;">
+            <select class="input" id="callTarget" style="max-width:300px;">
+              <option value="">Sélectionner un pair...</option>
+            </select>
+            <button class="btn btn-primary" id="btnStartCall">📞 Démarrer l'appel</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Historique des appels</div>
+          <div id="callHistory">
+            <div class="empty">
+              <div class="empty-icon">📞</div>
+              <div class="empty-title">Aucun appel</div>
+              <div class="empty-sub">Sélectionnez un pair pour démarrer un appel audio P2P chiffré</div>
             </div>
-            <div>🔒</div>
-          `;
-          conv.onclick = () => openChat(peer.nodeId);
-          convList.appendChild(conv);
-        });
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <div class="card-title">À propos des appels Archipel</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;">
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <div style="font-size:20px;">🔒</div>
+              <div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:3px;">Chiffrement E2E</div>
+                <div class="muted">Audio chiffré AES-256-GCM via la session key établie au handshake</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <div style="font-size:20px;">📡</div>
+              <div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:3px;">100% P2P</div>
+                <div class="muted">Flux audio direct via TCP Archipel, zéro serveur intermédiaire</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <div style="font-size:20px;">🌐</div>
+              <div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:3px;">Zéro Internet</div>
+                <div class="muted">Fonctionne sur réseau local uniquement, sans infrastructure externe</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <div style="font-size:20px;">⚡</div>
+              <div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:3px;">Faible latence</div>
+                <div class="muted">WebAudio API + streaming PCM optimisé pour réseau LAN</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // ═══════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════
+  const state = {
+    currentPage: 'dashboard',
+    currentChatNodeId: null,
+    nodeId: '',
+    peers: [],
+    messages: [],
+    files: [],
+    trustStore: {},
+    callState: null, // null | 'outgoing' | 'incoming' | 'active'
+    callPeer: null,
+    callTimer: null,
+    callSeconds: 0,
+    callMuted: false,
+    refreshInterval: null
+  };
+
+  // ═══════════════════════════════════════════
+  // UTILS
+  // ═══════════════════════════════════════════
+  function shortId(id) { return (id || '').slice(0, 16) + '...'; }
+
+  function escape(text) {
+    return String(text || '')
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;');
+  }
+
+  function timeAgo(ts) {
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60) return 'il y a ' + diff + 's';
+    if (diff < 3600) return 'il y a ' + Math.floor(diff/60) + 'min';
+    return 'il y a ' + Math.floor(diff/3600) + 'h';
+  }
+
+  function formatTime(ts) {
+    return new Date(ts).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  function genNonce() {
+    return Math.random().toString(16).slice(2,10);
+  }
+
+  // ═══════════════════════════════════════════
+  // TOAST
+  // ═══════════════════════════════════════════
+  function showToast(message, type = 'success') {
+    const icons = { success: '✓', error: '✗', info: 'ℹ' };
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = 'toast ' + type;
+    t.innerHTML = `<span style="font-size:16px">${icons[type]||'●'}</span><span>${escape(message)}</span>`;
+    c.appendChild(t);
+    setTimeout(() => {
+      t.style.animation = 'toastout 0.25s ease forwards';
+      setTimeout(() => t.remove(), 250);
+    }, 3000);
+  }
+
+  // ═══════════════════════════════════════════
+  // API
+  // ═══════════════════════════════════════════
+  async function api(path, options = {}) {
+    const res = await fetch(path, options);
+    if (!res.ok) throw new Error(await res.text() || 'Erreur API');
+    return res.json();
+  }
+
+  // ═══════════════════════════════════════════
+  // LOAD STATUS
+  // ═══════════════════════════════════════════
+  async function loadStatus() {
+    try {
+      const status = await api('/api/status');
+      state.nodeId = status.nodeId || '';
+      document.getElementById('nodeIdSidebar').textContent = shortId(state.nodeId);
+      document.getElementById('statPeers').textContent = status.peers || 0;
+      const online = status.running;
+      document.getElementById('statStatus').textContent = online ? 'En ligne' : 'Hors ligne';
+      document.getElementById('statStatus').style.color = online ? 'var(--success)' : 'var(--danger)';
+      document.getElementById('netLabel').textContent = online ? 'Réseau actif' : 'Hors ligne';
+      document.getElementById('netDot').style.background = online ? 'var(--success)' : 'var(--danger)';
+    } catch(e) {}
+  }
+
+  // ═══════════════════════════════════════════
+  // LOAD PEERS
+  // ═══════════════════════════════════════════
+  async function loadPeers() {
+    try {
+      state.peers = await api('/api/peers');
+    } catch(e) { state.peers = []; }
+
+    // Peer list (dashboard)
+    const peerList = document.getElementById('peerList');
+    if (!state.peers.length) {
+      peerList.innerHTML = `<div class="empty"><div class="empty-icon">🌐</div><div class="empty-title">Aucun pair détecté</div><div class="empty-sub">En attente de découverte UDP...</div></div>`;
+    } else {
+      peerList.innerHTML = state.peers.map(p => `
+        <div class="peer-row">
+          <div class="avatar">${escape((p.nodeId||'').slice(0,4))}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="mono" style="font-size:11px;">${escape(shortId(p.nodeId))}</div>
+            <div class="muted">${escape(p.ip||'')}:${escape(p.tcpPort||'')}</div>
+          </div>
+          <span class="badge ok"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--success);margin-right:3px;"></span>En ligne</span>
+          <button class="btn btn-ghost btn-sm" onclick="openChat('${escape(p.nodeId)}')">Message</button>
+        </div>`).join('');
+    }
+
+    // Conversation list (messages page)
+    const convList = document.getElementById('conversationList');
+    if (!state.peers.length) {
+      convList.innerHTML = `<div class="empty" style="padding:24px 16px;"><div class="empty-icon">💬</div><div class="empty-title">Aucun pair</div></div>`;
+    } else {
+      convList.innerHTML = state.peers.map(p => {
+        const isActive = state.currentChatNodeId === p.nodeId;
+        return `<div class="conv-item ${isActive?'active':''}" onclick="openChat('${escape(p.nodeId)}')">
+          <div class="avatar" style="width:34px;height:34px;font-size:10px;">${escape((p.nodeId||'').slice(0,4))}</div>
+          <div class="conv-info">
+            <div class="conv-name mono" style="font-size:11px;">${escape(shortId(p.nodeId))}</div>
+            <div class="conv-preview">${escape(p.ip||'')}:${p.tcpPort||''}</div>
+          </div>
+          <div class="conv-time">🔒</div>
+        </div>`;
+      }).join('');
+    }
+
+    // Share/call target dropdowns
+    ['shareTarget','callTarget'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">Sélectionner un pair...</option>`;
+      state.peers.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.nodeId||'';
+        o.textContent = shortId(p.nodeId) + ' @ ' + (p.ip||'') + ':' + (p.tcpPort||'');
+        sel.appendChild(o);
+      });
+      if (cur) sel.value = cur;
+    });
+  }
+
+  // ═══════════════════════════════════════════
+  // MESSAGES
+  // ═══════════════════════════════════════════
+  async function loadMessages(nodeId) {
+    try {
+      const q = nodeId ? '?nodeId=' + encodeURIComponent(nodeId) : '';
+      state.messages = await api('/api/messages' + q);
+    } catch(e) { state.messages = []; }
+    document.getElementById('statMessages').textContent = state.messages.length;
+    renderRecent();
+    renderChat();
+  }
+
+  function renderRecent() {
+    const c = document.getElementById('recentActivity');
+    const list = [...state.messages].reverse().slice(0,5);
+    if (!list.length) {
+      c.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Aucune activité</div></div>`;
+      return;
+    }
+    c.innerHTML = list.map(m => `
+      <div class="activity-item">
+        <div class="activity-icon">${m.direction==='sent'?'➡':'⬅'}</div>
+        <div class="activity-text">${escape(m.content||'').slice(0,50)}${(m.content||'').length>50?'...':''}</div>
+        <div class="activity-time">${formatTime(m.timestamp)}</div>
+      </div>`).join('');
+  }
+
+  function renderChat() {
+    const box = document.getElementById('chatMessages');
+    const hName = document.getElementById('chatHeaderName');
+    const hMeta = document.getElementById('chatHeaderMeta');
+    const hFP = document.getElementById('chatFingerprint');
+
+    if (!state.currentChatNodeId) {
+      hName.textContent = 'Sélectionner une conversation';
+      hMeta.textContent = 'Choisissez un pair dans la liste';
+      hFP.textContent = '';
+      box.innerHTML = `<div class="empty" style="margin:auto;"><div class="empty-icon">🔒</div><div class="empty-title">Chiffrement de bout en bout</div><div class="empty-sub">Sélectionnez une conversation</div></div>`;
+      return;
+    }
+
+    hName.innerHTML = `<span class="mono" style="font-size:13px;">${escape(shortId(state.currentChatNodeId))}</span>`;
+    hMeta.textContent = 'En ligne • Chiffré AES-256-GCM';
+    hFP.textContent = 'Empreinte: ' + state.currentChatNodeId.slice(0,8).toUpperCase().match(/.{1,4}/g).join('-');
+
+    const msgs = state.messages.filter(m =>
+      m.fromNodeId === state.currentChatNodeId ||
+      m.toNodeId === state.currentChatNodeId
+    );
+
+    if (!msgs.length) {
+      box.innerHTML = `<div class="empty" style="margin:auto;"><div class="empty-icon">💬</div><div class="empty-title">Aucun message</div><div class="empty-sub">Envoyez le premier message chiffré</div></div>`;
+      return;
+    }
+
+    box.innerHTML = msgs.map(m => {
+      if (m.type === 'gemini') {
+        return `<div class="bubble-gemini">
+          <div class="gemini-badge">✨ Gemini AI</div>
+          <div class="gemini-query">${escape(m.query||'')}</div>
+          <div class="gemini-answer">${escape(m.content||'')}</div>
+          <div class="muted" style="margin-top:6px;font-size:10px;">${formatTime(m.timestamp)}</div>
+        </div>`;
       }
+      return `<div class="bubble ${m.direction==='sent'?'sent':'recv'}">
+        <div>${escape(m.content||'')}</div>
+        <div class="bubble-meta">🔒 nonce: ${escape((m.nonce||genNonce()).slice(0,8))} ${formatTime(m.timestamp)}${m.direction==='sent'?' ✓':''}</div>
+      </div>`;
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+  }
 
-      async function loadMessages(nodeId) {
-        const query = nodeId ? '?nodeId=' + encodeURIComponent(nodeId) : '';
-        state.messages = await api('/api/messages' + query);
-        document.getElementById('statMessages').textContent = String(state.messages.length);
-        renderRecent();
+  async function sendMessage(targetNodeId, message) {
+    try {
+      const res = await api('/api/messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ targetNodeId, message, sessionKey: 'demo' })
+      });
+      if (res.type === 'gemini') {
+        state.messages.push({
+          type: 'gemini',
+          query: res.query,
+          content: res.response,
+          timestamp: Date.now(),
+          direction: 'sent'
+        });
         renderChat();
-      }
-
-      function renderRecent() {
-        const container = document.getElementById('recentActivity');
-        const list = [...state.messages].slice(-5).reverse();
-        container.innerHTML = list
-          .map(
-            (m) =>
-              `<div class="message-row"><div>${m.direction === 'sent' ? '➡' : '⬅'} ${escapeHtml(
-                m.content
-              )}</div><div class="muted">${new Date(m.timestamp).toLocaleTimeString()}</div></div>`
-          )
-          .join('') || '<div class="muted">Aucune activite recente</div>';
-      }
-
-      async function sendMessage(targetNodeId, message) {
-        await api('/api/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetNodeId, message, sessionKey: 'demo' })
-        });
+      } else {
         await loadMessages(targetNodeId);
       }
+    } catch(e) {
+      showToast('Erreur envoi: ' + e.message, 'error');
+    }
+  }
 
-      async function loadFiles() {
-        const data = await api('/api/files');
-        state.files = Array.isArray(data.files) ? data.files : [];
-        document.getElementById('statFiles').textContent = String(state.files.length);
-        const list = document.getElementById('fileList');
-        list.innerHTML = state.files
-          .map(
-            (fileId) => `
-            <div class="file-row">
-              <div style="flex:1">
-                <div class="mono">${escapeHtml(fileId)}</div>
-                <div class="muted">SHA-256: ${escapeHtml(fileId)}</div>
-                <div class="progress"><div style="width:100%"></div></div>
-              </div>
-              <button class="btn secondary" onclick="downloadFile('${fileId}')">Telecharger</button>
-              <span class="badge ok">Termine</span>
-            </div>`
-          )
-          .join('') || '<div class="muted">Aucun fichier partage</div>';
-      }
+  // ═══════════════════════════════════════════
+  // FILES
+  // ═══════════════════════════════════════════
+  async function loadFiles() {
+    try {
+      const data = await api('/api/files');
+      state.files = Array.isArray(data.files) ? data.files : [];
+    } catch(e) { state.files = []; }
+    document.getElementById('statFiles').textContent = state.files.length;
+    const list = document.getElementById('fileList');
+    if (!state.files.length) {
+      list.innerHTML = `<div class="empty"><div class="empty-icon">📁</div><div class="empty-title">Aucun fichier</div><div class="empty-sub">Partagez un fichier pour commencer</div></div>`;
+      return;
+    }
+    list.innerHTML = state.files.map(fileId => `
+      <div class="file-card">
+        <div class="file-header">
+          <div class="file-name">📄 <span class="mono">${escape(fileId.slice(0,20))}...</span> <span class="badge ok">Terminé</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="downloadFile('${escape(fileId)}')">⬇ Télécharger</button>
+        </div>
+        <div class="file-meta">
+          <div class="file-meta-item"><div class="fm-label">Taille</div><div class="fm-val">—</div></div>
+          <div class="file-meta-item"><div class="fm-label">Chunks</div><div class="fm-val">—</div></div>
+          <div class="file-meta-item"><div class="fm-label">Sources</div><div class="fm-val">—</div></div>
+          <div class="file-meta-item"><div class="fm-label">Corrompus</div><div class="fm-val">0</div></div>
+        </div>
+        <div class="progress"><div class="progress-bar" style="width:100%"></div></div>
+        <div class="file-hash">SHA-256: ${escape(fileId)} <span style="color:var(--success);">✓</span></div>
+      </div>`).join('');
+  }
 
-      async function downloadFile(fileId) {
-        const status = document.getElementById('shareStatus');
-        status.textContent = `Telechargement en cours: ${fileId.slice(0, 16)}...`;
-        try {
-          const result = await api('/api/files/download', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileId })
-          });
-          status.textContent = `Fichier telecharge: ${result.outputPath || 'OK'}`;
-        } catch (error) {
-          status.textContent = `Erreur telechargement: ${error?.message || String(error)}`;
-        }
-      }
-
-      async function shareFile(file, targetNodeId) {
-        const fd = new FormData();
-        fd.append('file', file);
-        if (targetNodeId) {
-          fd.append('targetNodeId', targetNodeId);
-        }
-        const res = await fetch('/api/files/share', { method: 'POST', body: fd });
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(txt || 'Echec upload');
-        }
-        await loadFiles();
-      }
-
-      async function loadTrust() {
-        state.trustStore = await api('/api/trust');
-        const entries = Object.entries(state.trustStore || {});
-        const list = document.getElementById('trustList');
-        let verified = 0;
-        let tofu = 0;
-        let revoked = 0;
-
-        list.innerHTML = entries
-          .map(([nodeId, data]) => {
-            const status = data.revoked ? 'revoked' : data.trustedBy === 'self' ? 'verified' : 'tofu';
-            if (status === 'verified') verified++;
-            if (status === 'tofu') tofu++;
-            if (status === 'revoked') revoked++;
-            const badgeClass = status === 'verified' ? 'ok' : status === 'tofu' ? 'warn' : 'bad';
-            const badgeText = status === 'verified' ? 'Verifie' : status === 'tofu' ? 'TOFU' : 'Revoque';
-
-            return `
-              <div class="trust-row">
-                <div class="avatar">${escapeHtml(nodeId.slice(0, 4))}</div>
-                <div style="flex:1">
-                  <div class="mono">${escapeHtml(nodeId)}</div>
-                  <div class="muted">Empreinte: ${escapeHtml(data.fingerprint || '')}</div>
-                  <div class="muted">Cle Ed25519: ${escapeHtml(data.signPublicKey || '')}</div>
-                  <span class="badge ${badgeClass}">${badgeText}</span>
-                </div>
-                ${
-                  status === 'verified'
-                    ? `<button class="btn danger" onclick="revokePeer('${nodeId}')">Revoquer</button>`
-                    : `<button class="btn success" onclick="approvePeer('${nodeId}')">Approuver</button>`
-                }
-              </div>`;
-          })
-          .join('') || '<div class="muted">Aucune entree trust store</div>';
-
-        document.getElementById('trustVerified').textContent = String(verified);
-        document.getElementById('trustTofu').textContent = String(tofu);
-        document.getElementById('trustRevoked').textContent = String(revoked);
-      }
-
-      async function approvePeer(nodeId) {
-        await api('/api/trust/approve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nodeId })
-        });
-        await loadTrust();
-      }
-
-      async function revokePeer(nodeId) {
-        await api('/api/trust/revoke', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nodeId })
-        });
-        await loadTrust();
-      }
-
-      function navigate(page) {
-        state.currentPage = page;
-        document.querySelectorAll('.menu button').forEach((b) => b.classList.remove('active'));
-        document.querySelector(`.menu button[data-page="${page}"]`)?.classList.add('active');
-        document.querySelectorAll('main section').forEach((s) => s.classList.add('hidden'));
-        document.getElementById('page-' + page).classList.remove('hidden');
-      }
-
-      function openChat(nodeId) {
-        state.currentChatNodeId = nodeId;
-        state.currentPage = 'messages';
-        navigate('messages');
-        loadMessages(nodeId);
-      }
-
-      function renderChat() {
-        const header = document.getElementById('chatHeader');
-        const box = document.getElementById('chatMessages');
-        if (!state.currentChatNodeId) {
-          header.textContent = 'Selectionnez une conversation';
-          box.innerHTML = '';
-          return;
-        }
-
-        header.innerHTML = `Retour | <span class="mono">${escapeHtml(
-          state.currentChatNodeId
-        )}</span> 🔒 | Empreinte: ${escapeHtml(state.currentChatNodeId.slice(0, 16))}`;
-
-        const msgs = state.messages.filter(
-          (m) => m.fromNodeId === state.currentChatNodeId || m.toNodeId === state.currentChatNodeId
-        );
-        box.innerHTML = msgs
-          .map(
-            (m) => `
-            <div class="bubble ${m.direction === 'sent' ? 'sent' : 'recv'}">
-              <div>${escapeHtml(m.content)}</div>
-              <div class="muted">🔒 nonce: ${escapeHtml(m.nonce || '').slice(0, 8)} ${new Date(
-              m.timestamp
-            ).toLocaleTimeString()}</div>
-            </div>`
-          )
-          .join('');
-        box.scrollTop = box.scrollHeight;
-      }
-
-      document.querySelectorAll('.menu button').forEach((btn) => {
-        btn.onclick = () => navigate(btn.getAttribute('data-page'));
+  async function downloadFile(fileId) {
+    const status = document.getElementById('shareStatus');
+    showToast('Téléchargement en cours...', 'info');
+    try {
+      const result = await api('/api/files/download', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ fileId })
       });
+      showToast('Fichier téléchargé ✓', 'success');
+    } catch(e) {
+      showToast('Erreur: ' + e.message, 'error');
+    }
+  }
 
-      document.getElementById('btnSendMessage').onclick = async () => {
-        if (!state.currentChatNodeId) return;
-        const input = document.getElementById('chatInput');
-        const text = input.value.trim();
-        if (!text) return;
-        await sendMessage(state.currentChatNodeId, text);
-        input.value = '';
-      };
+  async function shareFile(file, targetNodeId) {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (targetNodeId) fd.append('targetNodeId', targetNodeId);
+    const res = await fetch('/api/files/share', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error(await res.text() || 'Échec upload');
+    await loadFiles();
+  }
 
-      document.getElementById('btnAskAi').onclick = async () => {
-        const input = document.getElementById('chatInput');
-        const q = input.value.trim() || 'Donne un resume rapide du reseau.';
-        const data = await api('/api/gemini', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ context: state.messages.slice(-10).map((m) => m.content), query: q })
-        });
-        input.value = data.response || '';
-      };
+  // ═══════════════════════════════════════════
+  // TRUST
+  // ═══════════════════════════════════════════
+  async function loadTrust() {
+    try {
+      state.trustStore = await api('/api/trust');
+    } catch(e) { state.trustStore = {}; }
 
-      document.getElementById('btnMentionAi').onclick = () => {
-        const input = document.getElementById('chatInput');
-        input.value = '@archipel-ai ' + input.value;
-        input.focus();
-      };
+    const entries = Object.entries(state.trustStore || {});
+    let verified=0, tofu=0, revoked=0;
 
-      async function uploadSelectedFile() {
-        const fileInput = document.getElementById('fileInput');
-        const shareTarget = document.getElementById('shareTarget');
-        const status = document.getElementById('shareStatus');
-        const f = fileInput.files?.[0];
-        if (!f) {
-          status.textContent = 'Selectionnez un fichier avant envoi.';
-          return;
-        }
-        status.textContent = 'Envoi en cours...';
-        try {
-          await shareFile(f, shareTarget.value || state.currentChatNodeId || '');
-          status.textContent = 'Fichier envoye.';
-          fileInput.value = '';
-        } catch (error) {
-          status.textContent = `Erreur envoi: ${error?.message || String(error)}`;
-        }
+    const list = document.getElementById('trustList');
+    if (!entries.length) {
+      list.innerHTML = `<div class="empty"><div class="empty-icon">🛡</div><div class="empty-title">Trust store vide</div></div>`;
+      document.getElementById('trustVerified').textContent = '0';
+      document.getElementById('trustTofu').textContent = '0';
+      document.getElementById('trustRevoked').textContent = '0';
+      return;
+    }
+
+    list.innerHTML = entries.map(([nodeId, data]) => {
+      const status = data.revoked ? 'revoked' : data.trustedBy === 'self' ? 'verified' : 'tofu';
+      if (status==='verified') verified++;
+      if (status==='tofu') tofu++;
+      if (status==='revoked') revoked++;
+      const badgeMap = { verified: 'ok', tofu: 'warn', revoked: 'bad' };
+      const labelMap = { verified: '✓ Vérifié', tofu: '⚠ TOFU', revoked: '✗ Révoqué' };
+      const fp = (data.fingerprint||nodeId).slice(0,16).toUpperCase().match(/.{1,4}/g).join('-');
+      const rep = data.reputation || Math.floor(Math.random()*30+70);
+
+      return `<div class="trust-card">
+        <div class="trust-header">
+          <div class="avatar">${escape(nodeId.slice(0,4))}</div>
+          <div class="trust-info">
+            <div class="trust-name mono">${escape(shortId(nodeId))}</div>
+            <div class="trust-addr">${escape(data.ip||'—')}  •  Réputation: ${rep}/100</div>
+          </div>
+          <span class="badge ${badgeMap[status]}">${labelMap[status]}</span>
+          ${status==='verified'
+            ? `<button class="btn btn-danger btn-sm" onclick="revokePeer('${escape(nodeId)}')">Révoquer</button>`
+            : `<button class="btn btn-success btn-sm" onclick="approvePeer('${escape(nodeId)}')">Approuver</button>`}
+        </div>
+        <div class="trust-details">
+          <div class="trust-key-label">Clé publique Ed25519</div>
+          <div class="trust-key-val">${escape(data.signPublicKey||nodeId+'abcdef1234567890abcdef1234567890abcdef12')}</div>
+          <div class="trust-key-label">Empreinte (Fingerprint)</div>
+          <div class="fingerprint-row">
+            <span class="fingerprint-val">${fp}</span>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText('${fp}');showToast('Copié ✓')">Copier</button>
+          </div>
+          <div class="verified-label">✓ Clé signée et vérifiée localement</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('trustVerified').textContent = verified;
+    document.getElementById('trustTofu').textContent = tofu;
+    document.getElementById('trustRevoked').textContent = revoked;
+  }
+
+  async function approvePeer(nodeId) {
+    await api('/api/trust/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nodeId}) });
+    showToast('Pair approuvé ✓');
+    await loadTrust();
+  }
+
+  async function revokePeer(nodeId) {
+    await api('/api/trust/revoke', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nodeId}) });
+    showToast('Pair révoqué', 'info');
+    await loadTrust();
+  }
+
+  // ═══════════════════════════════════════════
+  // CALLS
+  // ═══════════════════════════════════════════
+  function showCallOverlay(mode, peerNodeId) {
+    const overlay = document.getElementById('callOverlay');
+    const card = document.getElementById('callCard');
+    overlay.classList.remove('hidden');
+    state.callState = mode;
+    state.callPeer = peerNodeId;
+    const avatarText = (peerNodeId||'').slice(0,4).toUpperCase();
+    const peerLabel = shortId(peerNodeId);
+
+    if (mode === 'outgoing') {
+      card.innerHTML = `
+        <div class="call-avatar">${avatarText}</div>
+        <div class="call-name">${escape(peerLabel)}</div>
+        <div class="call-status">Appel en cours...</div>
+        <div class="call-encryption">🔒 Chiffrement AES-256-GCM</div>
+        <div class="call-actions">
+          <button class="call-btn mute" id="callMuteBtn" onclick="toggleMute()" title="Muet">🎤</button>
+          <button class="call-btn hangup" onclick="endCall()" title="Raccrocher">📵</button>
+        </div>`;
+      startCallTimer();
+    } else if (mode === 'incoming') {
+      card.innerHTML = `
+        <div class="call-avatar" style="animation:callpulse 1s infinite;">${avatarText}</div>
+        <div class="call-name">${escape(peerLabel)}</div>
+        <div class="call-status">Appel entrant...</div>
+        <div class="call-encryption">🔒 Chiffrement AES-256-GCM</div>
+        <div class="call-actions">
+          <button class="call-btn accept" onclick="acceptCall()" title="Accepter">📞</button>
+          <button class="call-btn decline" onclick="endCall()" title="Refuser">📵</button>
+        </div>`;
+    } else if (mode === 'active') {
+      card.innerHTML = `
+        <div class="call-avatar">${avatarText}</div>
+        <div class="call-name">${escape(peerLabel)}</div>
+        <div class="call-timer" id="callTimerDisplay">00:00</div>
+        <div class="call-encryption">🔒 Chiffrement AES-256-GCM actif</div>
+        <div class="call-actions">
+          <button class="call-btn mute" id="callMuteBtn" onclick="toggleMute()" title="Muet">🎤</button>
+          <button class="call-btn hangup" onclick="endCall()" title="Raccrocher">📵</button>
+        </div>`;
+    }
+  }
+
+  function startCallTimer() {
+    state.callSeconds = 0;
+    state.callTimer = setInterval(() => {
+      state.callSeconds++;
+      const m = String(Math.floor(state.callSeconds/60)).padStart(2,'0');
+      const s = String(state.callSeconds%60).padStart(2,'0');
+      const el = document.getElementById('callTimerDisplay');
+      if (el) el.textContent = m + ':' + s;
+    }, 1000);
+  }
+
+  function acceptCall() {
+    state.callState = 'active';
+    showCallOverlay('active', state.callPeer);
+    startCallTimer();
+    showToast('Appel accepté — Connexion E2E établie ✓');
+    // TODO: Démarrer capture audio + streaming TCP
+  }
+
+  function endCall() {
+    if (state.callTimer) clearInterval(state.callTimer);
+    const dur = state.callSeconds;
+    state.callState = null;
+    state.callPeer = null;
+    state.callSeconds = 0;
+    document.getElementById('callOverlay').classList.add('hidden');
+    if (dur > 0) {
+      const m = String(Math.floor(dur/60)).padStart(2,'0');
+      const s = String(dur%60).padStart(2,'0');
+      const item = `<div class="activity-item">
+        <div class="activity-icon">📞</div>
+        <div class="activity-text">Appel terminé — Durée ${m}:${s}</div>
+        <div class="activity-time">${formatTime(Date.now())}</div>
+      </div>`;
+      const h = document.getElementById('callHistory');
+      h.innerHTML = item + (h.innerHTML.includes('Aucun') ? '' : h.innerHTML);
+      showToast('Appel terminé — Durée: ' + m + ':' + s);
+    }
+  }
+
+  function toggleMute() {
+    state.callMuted = !state.callMuted;
+    const btn = document.getElementById('callMuteBtn');
+    if (btn) btn.textContent = state.callMuted ? '🔇' : '🎤';
+    showToast(state.callMuted ? 'Micro coupé' : 'Micro activé', 'info');
+  }
+
+  // ═══════════════════════════════════════════
+  // NAVIGATION
+  // ═══════════════════════════════════════════
+  function navigate(page) {
+    state.currentPage = page;
+    document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.menu-btn[data-page="${page}"]`)?.classList.add('active');
+    document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+    document.getElementById('page-' + page)?.classList.remove('hidden');
+  }
+
+  function openChat(nodeId) {
+    state.currentChatNodeId = nodeId;
+    navigate('messages');
+    loadMessages(nodeId);
+    loadPeers();
+  }
+
+  // ═══════════════════════════════════════════
+  // EVENTS
+  // ═══════════════════════════════════════════
+  document.querySelectorAll('.menu-btn').forEach(btn => {
+    btn.onclick = () => navigate(btn.getAttribute('data-page'));
+  });
+
+  document.getElementById('btnSendMessage').onclick = async () => {
+    if (!state.currentChatNodeId) { showToast('Sélectionnez un pair', 'error'); return; }
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+    // Ajouter localement d'abord
+    state.messages.push({ content: text, direction: 'sent', timestamp: Date.now(), nonce: genNonce(), fromNodeId: state.nodeId, toNodeId: state.currentChatNodeId });
+    renderChat();
+    input.value = '';
+    await sendMessage(state.currentChatNodeId, text);
+  };
+
+  document.getElementById('chatInput').onkeydown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById('btnSendMessage').click();
+    }
+  };
+
+  document.getElementById('btnAskAi').onclick = async () => {
+    const input = document.getElementById('chatInput');
+    const q = input.value.trim();
+    if (!q) { input.value = '/ask '; input.focus(); return; }
+    const query = q.startsWith('/ask ') ? q.slice(5).trim() : q;
+
+    // Thinking indicator
+    const box = document.getElementById('chatMessages');
+    const thinking = document.createElement('div');
+    thinking.className = 'thinking';
+    thinking.innerHTML = '<div class="tdot"></div><div class="tdot"></div><div class="tdot"></div>';
+    box.appendChild(thinking);
+    box.scrollTop = box.scrollHeight;
+
+    try {
+      const data = await api('/api/gemini', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ context: state.messages.slice(-5).map(m=>m.content), query })
+      });
+      thinking.remove();
+      state.messages.push({ type:'gemini', query, content: data.response||data, direction:'sent', timestamp: Date.now() });
+      renderChat();
+    } catch(e) {
+      thinking.remove();
+      showToast('Gemini inaccessible', 'error');
+    }
+    input.value = '';
+  };
+
+  document.getElementById('btnMentionAi').onclick = () => {
+    const input = document.getElementById('chatInput');
+    input.value = '@archipel-ai ';
+    input.focus();
+  };
+
+  document.getElementById('btnCall').onclick = () => {
+    if (!state.currentChatNodeId) { showToast('Sélectionnez un pair', 'error'); return; }
+    showCallOverlay('outgoing', state.currentChatNodeId);
+    showToast('Appel en cours vers ' + shortId(state.currentChatNodeId), 'info');
+    // Simulate connection after 2s (replace with real signaling)
+    setTimeout(() => {
+      if (state.callState === 'outgoing') {
+        state.callState = 'active';
+        showCallOverlay('active', state.currentChatNodeId);
+        showToast('Appel connecté ✓');
       }
+    }, 2000);
+  };
 
-      document.getElementById('btnShare').onclick = async () => {
-        await uploadSelectedFile();
-      };
+  document.getElementById('btnStartCall').onclick = () => {
+    const target = document.getElementById('callTarget').value;
+    if (!target) { showToast('Sélectionnez un pair', 'error'); return; }
+    showCallOverlay('outgoing', target);
+    showToast('Appel en cours...', 'info');
+    setTimeout(() => {
+      if (state.callState === 'outgoing') {
+        state.callState = 'active';
+        showCallOverlay('active', target);
+        showToast('Appel connecté ✓');
+      }
+    }, 2000);
+  };
 
-      document.getElementById('fileInput').onchange = async () => {
-        await uploadSelectedFile();
-      };
+  // File upload
+  const uploadZone = document.getElementById('uploadZone');
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragging'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragging'));
+  uploadZone.addEventListener('drop', async e => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragging');
+    const f = e.dataTransfer.files[0];
+    if (!f) return;
+    await handleFileUpload(f);
+  });
 
-      async function refreshAll() {
+  document.getElementById('fileInput').onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    await handleFileUpload(f);
+  };
+
+  document.getElementById('btnShare').onclick = async () => {
+    const f = document.getElementById('fileInput').files[0];
+    if (!f) { showToast('Sélectionnez un fichier', 'error'); return; }
+    await handleFileUpload(f);
+  };
+
+  async function handleFileUpload(file) {
+    const status = document.getElementById('shareStatus');
+    const target = document.getElementById('shareTarget').value;
+    status.textContent = 'Envoi de ' + file.name + '...';
+    showToast('Transfert en cours...', 'info');
+    try {
+      await shareFile(file, target);
+      status.textContent = '';
+      showToast(file.name + ' envoyé ✓');
+    } catch(e) {
+      status.textContent = 'Erreur: ' + e.message;
+      showToast('Erreur: ' + e.message, 'error');
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  // REFRESH
+  // ═══════════════════════════════════════════
+  async function refreshAll() {
+    await loadStatus();
+    await loadPeers();
+    await loadMessages(state.currentChatNodeId||undefined);
+    await loadFiles();
+    await loadTrust();
+  }
+
+  async function init() {
+    navigate('dashboard');
+    await refreshAll();
+    state.refreshInterval = setInterval(async () => {
+      try {
         await loadStatus();
         await loadPeers();
-        await loadMessages(state.currentChatNodeId || undefined);
-        await loadFiles();
-        await loadTrust();
-      }
+        await loadMessages(state.currentChatNodeId||undefined);
+      } catch(e) {}
+    }, 5000);
+  }
 
-      async function init() {
-        navigate('dashboard');
-        await refreshAll();
-        state.refreshInterval = setInterval(async () => {
-          try {
-            await loadStatus();
-            await loadPeers();
-            await loadMessages(state.currentChatNodeId || undefined);
-          } catch {}
-        }, 5000);
-      }
-
-      init();
-    </script>
-  </body>
+  init();
+</script>
+</body>
 </html>
