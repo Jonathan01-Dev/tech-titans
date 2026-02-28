@@ -6,7 +6,7 @@ import { Discovery } from '../network/discovery.js';
 import { TcpServer } from '../network/server.js';
 import { TcpClient } from '../network/client.js';
 import { ChatSession } from '../messaging/chat.js';
-import { performHandshake } from '../crypto/handshake.js';
+import { performHandshake, performHandshakeDetailed } from '../crypto/handshake.js';
 import { trustPeer, revokePeer, loadTrustStore } from '../crypto/trust.js';
 import { buildManifest, computeFileHash, splitFile, reassembleFile } from '../transfer/chunker.js';
 import { DownloadManager } from '../transfer/downloader.js';
@@ -289,6 +289,45 @@ export class ArpelNode {
       this.sessionKeys.set(peer.nodeId, key);
       this.server.setSessionKey(this.identity.nodeId, key);
       return key;
+    } finally {
+      await client.disconnectGraceful(socket).catch(() => undefined);
+    }
+  }
+
+  async connectPeer(ip: string, tcpPort: number): Promise<Peer> {
+    const normalizedIp = String(ip || '').trim();
+    if (!normalizedIp) {
+      throw new Error('IP manquante');
+    }
+    if (!Number.isInteger(tcpPort) || tcpPort <= 0 || tcpPort > 65535) {
+      throw new Error('Port TCP invalide');
+    }
+
+    const client = new TcpClient();
+    const socket = await client.connect({
+      nodeId: 'manual-connect',
+      ip: normalizedIp,
+      tcpPort,
+      lastSeen: Date.now(),
+      sharedFiles: [],
+      reputation: 1
+    });
+
+    try {
+      const { sessionKey, peerNodeId } = await performHandshakeDetailed(socket, this.identity, true);
+      this.sessionKeys.set(peerNodeId, sessionKey);
+      this.server.setSessionKey(this.identity.nodeId, sessionKey);
+      this.peerTable.upsert(peerNodeId, {
+        ip: normalizedIp,
+        tcpPort,
+        lastSeen: Date.now()
+      });
+
+      const peer = this.peerTable.get(peerNodeId);
+      if (!peer) {
+        throw new Error('Pair connecte mais non enregistre');
+      }
+      return peer;
     } finally {
       await client.disconnectGraceful(socket).catch(() => undefined);
     }

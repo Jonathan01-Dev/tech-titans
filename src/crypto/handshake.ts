@@ -121,6 +121,15 @@ export async function performHandshake(
   myIdentity: Identity,
   isInitiator: boolean
 ): Promise<Buffer> {
+  const result = await performHandshakeDetailed(socket, myIdentity, isInitiator);
+  return result.sessionKey;
+}
+
+export async function performHandshakeDetailed(
+  socket: net.Socket,
+  myIdentity: Identity,
+  isInitiator: boolean
+): Promise<{ sessionKey: Buffer; peerNodeId: string }> {
   await sodium.ready;
   const reader = createPacketReader(socket);
 
@@ -171,7 +180,10 @@ export async function performHandshake(
         throw new Error(`Unexpected packet type ${authOk.type} at AUTH_OK`);
       }
 
-      return deriveSessionKey(shared);
+      return {
+        sessionKey: deriveSessionKey(shared),
+        peerNodeId: helloReplyPayload.node_id
+      };
     }
 
     const hello = await reader.readNext('HELLO');
@@ -207,7 +219,10 @@ export async function performHandshake(
     const authOkPayload = Buffer.from(JSON.stringify({ ok: true, timestamp: Date.now() }), 'utf8');
     await writePacket(socket, buildPacket(PacketType.AUTH_OK, myNodeIdBuffer, authOkPayload));
 
-    return deriveSessionKey(shared);
+    return {
+      sessionKey: deriveSessionKey(shared),
+      peerNodeId: authPayload.node_id
+    };
   } finally {
     reader.close();
   }

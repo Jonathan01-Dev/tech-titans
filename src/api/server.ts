@@ -36,6 +36,18 @@ export async function startWebServer(node: ArpelNode, webPort = 8080): Promise<v
     res.json(node.getPeers());
   });
 
+  app.post('/api/peers/connect', async (req, res) => {
+    try {
+      const { ip, tcpPort } = req.body as { ip: string; tcpPort: number | string };
+      const port = typeof tcpPort === 'number' ? tcpPort : parseInt(String(tcpPort ?? ''), 10);
+      const peer = await node.connectPeer(String(ip ?? ''), port);
+      res.json({ success: true, peer });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: message });
+    }
+  });
+
   app.get('/api/messages', (req, res) => {
     const nodeId = typeof req.query.nodeId === 'string' ? req.query.nodeId : undefined;
     res.json(node.getMessages(nodeId));

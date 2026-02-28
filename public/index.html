@@ -391,6 +391,12 @@
           </div>
           <div class="card" style="margin-top: 14px">
             <h3>Pairs connectes</h3>
+            <div class="row" style="margin-bottom: 10px">
+              <input id="manualPeerIp" placeholder="IP du pair (ex: 192.168.1.50)" />
+              <input id="manualPeerPort" type="number" min="1" max="65535" placeholder="Port TCP (ex: 7777)" />
+              <button class="btn" id="btnConnectPeer">Connecter</button>
+            </div>
+            <div id="connectStatus" class="muted" style="margin-bottom: 8px"></div>
             <div id="peerList"></div>
           </div>
           <div class="card" style="margin-top: 14px">
@@ -605,6 +611,33 @@
           .join('') || '<div class="muted">Aucun fichier partage</div>';
       }
 
+      async function connectPeerManual() {
+        const ipInput = document.getElementById('manualPeerIp');
+        const portInput = document.getElementById('manualPeerPort');
+        const status = document.getElementById('connectStatus');
+        const ip = ipInput.value.trim();
+        const tcpPort = parseInt(portInput.value, 10);
+
+        if (!ip || !Number.isInteger(tcpPort) || tcpPort <= 0 || tcpPort > 65535) {
+          status.textContent = 'IP/port invalide.';
+          return;
+        }
+
+        status.textContent = 'Connexion en cours...';
+        try {
+          const res = await api('/api/peers/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip, tcpPort })
+          });
+          status.textContent = `Connecte: ${(res.peer?.nodeId || '').slice(0, 16)}... @ ${ip}:${tcpPort}`;
+          await loadPeers();
+          await loadStatus();
+        } catch (error) {
+          status.textContent = `Erreur connexion: ${error?.message || String(error)}`;
+        }
+      }
+
       async function downloadFile(fileId) {
         const status = document.getElementById('shareStatus');
         status.textContent = `Telechargement en cours: ${fileId.slice(0, 16)}...`;
@@ -788,6 +821,10 @@
 
       document.getElementById('btnShare').onclick = async () => {
         await uploadSelectedFile();
+      };
+
+      document.getElementById('btnConnectPeer').onclick = async () => {
+        await connectPeerManual();
       };
 
       document.getElementById('fileInput').onchange = async () => {
