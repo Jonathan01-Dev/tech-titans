@@ -124,7 +124,7 @@ async function runSend(options: Options): Promise<void> {
     console.log(`Chunks : ${manifest.nbChunks}`);
     console.log('Send OK');
   } finally {
-    client.disconnect(socket);
+    await client.disconnectGraceful(socket);
   }
 }
 

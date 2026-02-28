@@ -37,4 +37,30 @@ export class TcpClient {
   disconnect(socket: net.Socket): void {
     socket.destroy();
   }
+
+  disconnectGraceful(socket: net.Socket, timeoutMs = 5000): Promise<void> {
+    return new Promise<void>((resolve) => {
+      let settled = false;
+
+      const finish = (): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        resolve();
+      };
+
+      const timer = setTimeout(() => {
+        socket.destroy();
+        finish();
+      }, timeoutMs);
+
+      socket.once('close', () => {
+        clearTimeout(timer);
+        finish();
+      });
+
+      socket.end();
+    });
+  }
 }
