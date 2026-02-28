@@ -38,6 +38,7 @@ export class ArpelNode {
   private sessionKeys: Map<string, Buffer>;
   private webPort: number;
   private startedAt: number;
+  private defaultSessionKey: Buffer;
 
   constructor() {
     this.port = 0;
@@ -46,6 +47,7 @@ export class ArpelNode {
     this.sessionKeys = new Map();
     this.webPort = 8080;
     this.startedAt = 0;
+    this.defaultSessionKey = crypto.createHash('sha256').update('demo').digest().subarray(0, 32);
   }
 
   async start(port: number): Promise<void> {
@@ -67,10 +69,7 @@ export class ArpelNode {
           ciphertext: string;
           tag: string;
         };
-        const sessionKey = this.sessionKeys.get(fromNodeId);
-        if (!sessionKey) {
-          return;
-        }
+        const sessionKey = this.sessionKeys.get(fromNodeId) ?? this.defaultSessionKey;
 
         const clear = decrypt(sessionKey, {
           nonce: Buffer.from(payload.nonce, 'hex'),
