@@ -5,3 +5,9 @@ node_modules/
 dist/
 demo/*.bin
 demo/downloads/
+downloads/
+uploads/
+tests/*.js
+tests/*.d.ts
+tests/*.js.map
+tests/*.d.ts.map
