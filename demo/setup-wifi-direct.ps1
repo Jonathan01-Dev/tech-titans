@@ -1,9 +1,9 @@
 Write-Host "ARCHIPEL - Setup Wi-Fi Direct"
 Write-Host "=============================="
 
-$isAdmin = ([Security.Principal.WindowsPrincipal]
-  [Security.Principal.WindowsIdentity]::GetCurrent()
-).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+$currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal($currentIdentity)
+$isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $isAdmin) {
   Write-Host "ERREUR: Lance en mode Administrateur !"
