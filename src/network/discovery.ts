@@ -1,26 +1,9 @@
 import dgram from 'dgram';
-import os from 'os';
 import { CONFIG } from '../config.js';
 import { buildPacket, parsePacket } from './packet.js';
 import { PeerTable } from './peerTable.js';
 import type { Identity } from '../types/index.js';
 import { PacketType } from '../types/index.js';
-
-function getActiveIpv4Interfaces(): string[] {
-  const nets = os.networkInterfaces();
-  const addresses = new Set<string>();
-
-  for (const list of Object.values(nets)) {
-    if (!list) continue;
-    for (const net of list) {
-      if (net.family === 'IPv4' && !net.internal) {
-        addresses.add(net.address);
-      }
-    }
-  }
-
-  return [...addresses];
-}
 
 export class Discovery {
   private socket!: dgram.Socket;
@@ -107,46 +90,18 @@ export class Discovery {
       this.socket.once('error', reject);
       this.socket.bind(CONFIG.MULTICAST_PORT, () => {
         try {
-          const forcedIface = CONFIG.MULTICAST_IFACE.trim();
-          const ifaces = forcedIface.length > 0 ? [forcedIface] : getActiveIpv4Interfaces();
-
-          this.debugLog(
-            `Startup: forcedIface=${forcedIface || '<none>'}, selectedIfaces=${ifaces.join(', ') || '<none>'}`
-          );
-
-          if (ifaces.length === 0) {
+          try {
+            this.socket.addMembership(CONFIG.MULTICAST_ADDR, CONFIG.MULTICAST_INTERFACE);
+            this.joinedIfaces.push(CONFIG.MULTICAST_INTERFACE);
+            console.log(`[Discovery] Multicast joined on ${CONFIG.MULTICAST_INTERFACE}`);
+          } catch {
             this.socket.addMembership(CONFIG.MULTICAST_ADDR);
-            this.debugLog('Joined multicast without explicit interface');
-          } else {
-            for (const iface of ifaces) {
-              try {
-                this.socket.addMembership(CONFIG.MULTICAST_ADDR, iface);
-                this.joinedIfaces.push(iface);
-                console.log(`[Discovery] Multicast joined on ${iface}`);
-              } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                console.warn(`[Discovery] Join failed on ${iface}: ${message}`);
-              }
-            }
-
-            if (this.joinedIfaces.length === 0) {
-              this.socket.addMembership(CONFIG.MULTICAST_ADDR);
-              console.warn('[Discovery] No interface join succeeded, fallback to default multicast membership');
-            }
+            console.log('[Discovery] Multicast joined on default interface');
           }
 
           this.socket.setMulticastLoopback(true);
           this.socket.setBroadcast(true);
           this.socket.setMulticastTTL(128);
-          if (forcedIface.length > 0) {
-            try {
-              this.socket.setMulticastInterface(forcedIface);
-              this.debugLog(`Multicast send interface set to ${forcedIface}`);
-            } catch (err) {
-              const message = err instanceof Error ? err.message : String(err);
-              console.warn(`[Discovery] Failed to set multicast interface ${forcedIface}: ${message}`);
-            }
-          }
 
           this.sendHello();
           this.helloInterval = setInterval(() => this.sendHello(), CONFIG.HELLO_INTERVAL);
