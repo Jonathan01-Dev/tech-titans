@@ -76,7 +76,9 @@ export async function startWebServer(node: ArpelNode, webPort = 8080): Promise<v
         return;
       }
 
-      const uploadedPath = path.join(process.cwd(), req.file.path);
+      const uploadedPath = path.isAbsolute(req.file.path)
+        ? req.file.path
+        : path.join(process.cwd(), req.file.path);
       const targetNodeId = typeof req.body.targetNodeId === 'string' ? req.body.targetNodeId : '';
 
       const manifest = await buildManifest(uploadedPath, node.identity.nodeId, (data) => {

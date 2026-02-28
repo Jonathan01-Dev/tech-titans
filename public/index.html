@@ -432,16 +432,18 @@
             <p>Partage P2P avec verification SHA-256</p>
           </div>
           <div class="card">
-            <div class="row" style="justify-content: space-between">
-              <div></div>
-              <button class="btn" id="btnShare">Partager un fichier</button>
+            <div class="row" style="justify-content: space-between; margin-bottom: 10px">
+              <select id="shareTarget">
+                <option value="">Pair cible (optionnel)</option>
+              </select>
+              <button class="btn" id="btnShare">Envoyer</button>
             </div>
             <div class="upload-zone" id="uploadZone">
               <div style="font-size: 28px">📤</div>
-              <div>Glissez-deposez un fichier ici</div>
-              <div class="muted">ou cliquez sur le bouton ci-dessus</div>
+              <div>Selectionnez un fichier puis cliquez sur Envoyer</div>
             </div>
-            <input type="file" id="fileInput" class="hidden" />
+            <input type="file" id="fileInput" />
+            <div id="shareStatus" class="muted" style="margin-top: 8px"></div>
             <div id="fileList"></div>
           </div>
         </section>
@@ -508,8 +510,20 @@
         state.peers = await api('/api/peers');
         const peerList = document.getElementById('peerList');
         const convList = document.getElementById('conversationList');
+        const shareTarget = document.getElementById('shareTarget');
         peerList.innerHTML = '';
         convList.innerHTML = '';
+        if (shareTarget) {
+          const current = shareTarget.value;
+          shareTarget.innerHTML = '<option value="">Pair cible (optionnel)</option>';
+          state.peers.forEach((peer) => {
+            const option = document.createElement('option');
+            option.value = peer.nodeId || '';
+            option.textContent = `${(peer.nodeId || '').slice(0, 16)}... @ ${peer.ip || ''}:${peer.tcpPort || ''}`;
+            shareTarget.appendChild(option);
+          });
+          if (current) shareTarget.value = current;
+        }
 
         state.peers.forEach((peer) => {
           const row = document.createElement('div');
@@ -596,7 +610,11 @@
         if (targetNodeId) {
           fd.append('targetNodeId', targetNodeId);
         }
-        await fetch('/api/files/share', { method: 'POST', body: fd });
+        const res = await fetch('/api/files/share', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || 'Echec upload');
+        }
         await loadFiles();
       }
 
@@ -733,12 +751,31 @@
         input.focus();
       };
 
-      document.getElementById('btnShare').onclick = () => document.getElementById('fileInput').click();
+      async function uploadSelectedFile() {
+        const fileInput = document.getElementById('fileInput');
+        const shareTarget = document.getElementById('shareTarget');
+        const status = document.getElementById('shareStatus');
+        const f = fileInput.files?.[0];
+        if (!f) {
+          status.textContent = 'Selectionnez un fichier avant envoi.';
+          return;
+        }
+        status.textContent = 'Envoi en cours...';
+        try {
+          await shareFile(f, shareTarget.value || state.currentChatNodeId || '');
+          status.textContent = 'Fichier envoye.';
+          fileInput.value = '';
+        } catch (error) {
+          status.textContent = `Erreur envoi: ${error?.message || String(error)}`;
+        }
+      }
 
-      document.getElementById('fileInput').onchange = async (evt) => {
-        const f = evt.target.files?.[0];
-        if (!f) return;
-        await shareFile(f, state.currentChatNodeId);
+      document.getElementById('btnShare').onclick = async () => {
+        await uploadSelectedFile();
+      };
+
+      document.getElementById('fileInput').onchange = async () => {
+        await uploadSelectedFile();
       };
 
       async function refreshAll() {
