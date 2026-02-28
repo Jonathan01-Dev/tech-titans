@@ -6,6 +6,7 @@
     "start": "ts-node --esm src/cli/index.ts",
     "build": "tsc",
     "test": "ts-node --esm tests/test-identity.ts",
+    "test:chat": "ts-node --esm tests/test-chat.ts",
     "test:transfer60": "ts-node --esm tests/test-transfer-60mb.ts",
     "dev": "ts-node --esm src/cli/index.ts",
     "postinstall": "node ./tools/postinstall-desktop-shortcut.mjs"
