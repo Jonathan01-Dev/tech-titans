@@ -10,6 +10,8 @@
     "dev": "ts-node --esm src/cli/index.ts"
   },
   "dependencies": {
+    "@abandonware/bleno": "^0.6.2-8",
+    "@abandonware/noble": "^1.9.2-26",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "libsodium-wrappers": "0.7.13",

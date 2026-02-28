@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { loadIdentity, getPublicIdentity } from '../crypto/identity.js';
 import { PeerTable } from '../network/peerTable.js';
 import { Discovery } from '../network/discovery.js';
-import { TcpServer } from '../network/server.js';
+import { createBleDiscovery, TcpServer } from '../network/server.js';
 import { TcpClient } from '../network/client.js';
 import { ChatSession } from '../messaging/chat.js';
 import { performHandshake } from '../crypto/handshake.js';
@@ -39,6 +39,7 @@ export class ArpelNode {
   private webPort: number;
   private startedAt: number;
   private defaultSessionKey: Buffer;
+  private bleDiscoveryStop: (() => void) | null;
 
   constructor() {
     this.port = 0;
@@ -48,6 +49,7 @@ export class ArpelNode {
     this.webPort = 8080;
     this.startedAt = 0;
     this.defaultSessionKey = crypto.createHash('sha256').update('demo').digest().subarray(0, 32);
+    this.bleDiscoveryStop = null;
   }
 
   async start(port: number): Promise<void> {
@@ -84,6 +86,13 @@ export class ArpelNode {
 
     await this.server.start(this.port);
     await this.discovery.start();
+    const bleDiscovery = await createBleDiscovery(this.identity, this.port, this.peerTable).catch(() => null);
+    if (bleDiscovery) {
+      this.bleDiscoveryStop = () => bleDiscovery.stop();
+      console.log('[BLE] Discovery active');
+    } else {
+      this.bleDiscoveryStop = null;
+    }
     this.running = true;
     this.startedAt = Date.now();
     console.log(`[Node] Demarre: ${this.identity.nodeId.slice(0, 16)}... tcp=${this.port}`);
@@ -93,6 +102,10 @@ export class ArpelNode {
   async stop(): Promise<void> {
     if (!this.running) {
       return;
+    }
+    if (this.bleDiscoveryStop) {
+      this.bleDiscoveryStop();
+      this.bleDiscoveryStop = null;
     }
     this.discovery.stop();
     await this.server.stop();
